@@ -1,0 +1,131 @@
+<div class="overlay" *ngIf="isOpen && day" (click)="onBackdropClick($event)">
+  <div class="dialog wide" role="dialog" aria-modal="true" aria-labelledby="dlg-title">
+    <div class="dialog-head">
+      <div>
+        <h2 id="dlg-title">{{ title }}</h2>
+        <p>{{ punchSummary }} Os horários sugeridos seguem o ponto, sem sobreposição.</p>
+      </div>
+      <button class="icon-btn plain" (click)="onClose()" [disabled]="sending" aria-label="Fechar">
+        <svg class="ic" viewBox="0 0 16 16" aria-hidden="true">
+          <path d="M4.25 4.25l7.5 7.5M11.75 4.25l-7.5 7.5" />
+        </svg>
+      </button>
+    </div>
+
+    <div class="dialog-body">
+      <div class="note" *ngFor="let note of notes" [class.info]="note.kind === 'info'" [class.err]="note.kind === 'err'">
+        {{ note.text }}
+      </div>
+
+      <div class="scroll-x" *ngIf="drafts.length > 0">
+        <div class="drafts">
+          <div class="draft-row hd-row">
+            <span class="hd">Issue</span>
+            <span class="hd">Início</span>
+            <span class="hd">Duração</span>
+            <span class="hd">Comentário</span>
+            <span class="hd">Situação</span>
+            <span></span>
+          </div>
+          <div class="draft-row" *ngFor="let draft of drafts; trackBy: trackDraft">
+            <div class="iss">
+              <b>{{ draft.issueKey }}</b>
+              <span [title]="draft.issueSummary">{{ draft.issueSummary }}</span>
+            </div>
+            <input
+              class="sm"
+              type="time"
+              [value]="clock(draft.start)"
+              [disabled]="isLocked(draft)"
+              [class.bad]="badStart(draft)"
+              (input)="onStartInput(draft, $any($event.target).value)"
+              [attr.aria-label]="'Início ' + draft.issueKey"
+            />
+            <input
+              class="sm"
+              type="text"
+              inputmode="numeric"
+              placeholder="h:mm"
+              [value]="draft.durationRaw"
+              [disabled]="isLocked(draft)"
+              [class.bad]="badDuration(draft)"
+              (input)="onDurationInput(draft, $any($event.target).value)"
+              [attr.aria-label]="'Duração ' + draft.issueKey"
+            />
+            <input
+              class="sm"
+              type="text"
+              placeholder="Opcional"
+              [value]="draft.comment"
+              [disabled]="isLocked(draft)"
+              (input)="onCommentInput(draft, $any($event.target).value)"
+              [attr.aria-label]="'Comentário ' + draft.issueKey"
+            />
+            <div [ngSwitch]="draft.state">
+              <span class="st sending" *ngSwitchCase="'sending'"><span class="spin"></span>Enviando…</span>
+              <ng-container *ngSwitchCase="'failed'">
+                <button class="btn small" *ngIf="!sending" (click)="retry(draft)" [disabled]="!!errors[draft.id]">
+                  Enviar de novo
+                </button>
+                <span class="st failed" *ngIf="sending"><span class="dot"></span>Falhou</span>
+              </ng-container>
+              <span class="st sent" *ngSwitchCase="'sent'"><span class="dot"></span>Enviado</span>
+              <span class="st" *ngSwitchDefault><span class="dot"></span>Rascunho</span>
+            </div>
+            <button
+              class="icon-btn plain"
+              (click)="removeDraft(draft)"
+              [disabled]="isLocked(draft)"
+              [attr.aria-label]="'Excluir rascunho de ' + draft.issueKey"
+              title="Excluir"
+            >
+              <svg class="ic" viewBox="0 0 16 16" aria-hidden="true">
+                <path d="M4.25 4.25l7.5 7.5M11.75 4.25l-7.5 7.5" />
+              </svg>
+            </button>
+            <div class="row-err">{{ rowError(draft) }}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="empty" *ngIf="drafts.length === 0">Nenhum rascunho para este dia.</div>
+
+      <details class="reqs">
+        <summary>Ver requisições que serão enviadas</summary>
+        <pre>{{ requests }}</pre>
+      </details>
+    </div>
+
+    <div class="dialog-foot">
+      <div class="confirm" *ngIf="confirming">
+        <span>Enviar {{ worklogLabel(toSend.length) }} para o Jira? O GAMA não desfaz o envio.</span>
+        <button class="btn quiet" (click)="cancelSend()">Voltar</button>
+        <button class="btn primary" (click)="confirmSend()">
+          <svg class="ic" viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M13.5 2.5 7 9M13.5 2.5 9.5 13.5 7 9 2.5 6.5z" />
+          </svg>
+          Enviar agora
+        </button>
+      </div>
+
+      <ng-container *ngIf="!confirming && allSent">
+        <span class="grow">Todos os worklogs do dia foram enviados.</span>
+        <button class="btn primary" (click)="onClose()">Fechar</button>
+      </ng-container>
+
+      <ng-container *ngIf="!confirming && !allSent">
+        <span class="grow">Total {{ hfmt(total) }} de {{ hfmt(day.total_minutes) }} no ponto</span>
+        <button class="btn" (click)="onClose()" [disabled]="sending">Fechar e manter rascunhos</button>
+        <button class="btn primary" (click)="askSend()" [disabled]="sending || hasErrors || toSend.length === 0">
+          <ng-container *ngIf="sending"><span class="spin"></span>Enviando…</ng-container>
+          <ng-container *ngIf="!sending">
+            <svg class="ic" viewBox="0 0 16 16" aria-hidden="true">
+              <path d="M13.5 2.5 7 9M13.5 2.5 9.5 13.5 7 9 2.5 6.5z" />
+            </svg>
+            Enviar {{ worklogLabel(toSend.length) }}
+          </ng-container>
+        </button>
+      </ng-container>
+    </div>
+  </div>
+</div>

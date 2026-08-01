@@ -1,0 +1,20 @@
+:host {
+  display: block;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.range-btn {
+  max-width: 100%;
+  flex-shrink: 1;
+  min-width: 0;
+}
+.range-txt {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.chev {
+  color: var(--muted);
+}

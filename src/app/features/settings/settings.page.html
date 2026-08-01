@@ -1,0 +1,286 @@
+<app-toast></app-toast>
+
+<header class="page-head">
+  <div class="title-row">
+    <h1>Configurações</h1>
+  </div>
+</header>
+
+<div class="content">
+  <section class="set-section">
+    <div class="set-title">
+      <h2>Aparência</h2>
+    </div>
+    <div class="group">
+      <div class="row">
+        <div class="row-text">
+          <b>Tema</b>
+          <span *ngIf="theme === 'system'">Seguindo a configuração do seu computador.</span>
+          <span *ngIf="theme !== 'system'">Sistema acompanha a configuração do seu computador.</span>
+        </div>
+        <div class="themes" role="group" aria-label="Tema">
+          <button class="theme-opt" (click)="setTheme('light')" [attr.aria-pressed]="theme === 'light'">
+            <span class="thumb light">
+              <i class="t-side"></i>
+              <i class="t-pill"></i>
+              <i class="t-card"></i>
+              <i class="t-card2"></i>
+            </span>
+            Claro
+          </button>
+          <button class="theme-opt" (click)="setTheme('dark')" [attr.aria-pressed]="theme === 'dark'">
+            <span class="thumb dark">
+              <i class="t-side"></i>
+              <i class="t-pill"></i>
+              <i class="t-card"></i>
+              <i class="t-card2"></i>
+            </span>
+            Escuro
+          </button>
+          <button class="theme-opt" (click)="setTheme('system')" [attr.aria-pressed]="theme === 'system'">
+            <span class="thumb system">
+              <span class="half l">
+                <span class="inner light">
+                  <i class="t-side"></i>
+                  <i class="t-pill"></i>
+                  <i class="t-card"></i>
+                  <i class="t-card2"></i>
+                </span>
+              </span>
+              <span class="half r">
+                <span class="inner dark">
+                  <i class="t-side"></i>
+                  <i class="t-pill"></i>
+                  <i class="t-card"></i>
+                  <i class="t-card2"></i>
+                </span>
+              </span>
+            </span>
+            Sistema
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="set-section">
+    <div class="set-title">
+      <h2>Sincronização</h2>
+    </div>
+    <div class="group">
+      <div class="row">
+        <div class="row-text">
+          <b>Intervalo mínimo entre sincronizações</b>
+          <span *ngIf="minSyncIntervalMinutes === 0">Cada tela busca dados no Jira sempre que é aberta.</span>
+          <span *ngIf="minSyncIntervalMinutes > 0">Dentro desse intervalo as telas usam o cache. O botão Sincronizar
+            sempre busca dados novos.</span>
+        </div>
+        <gama-select [options]="syncIntervalOptions" [value]="minSyncIntervalMinutes" [disabled]="syncIntervalSaving"
+          ariaLabel="Intervalo mínimo entre sincronizações" (changed)="setSyncInterval($event)" />
+      </div>
+    </div>
+  </section>
+
+  <section class="set-section">
+    <div class="set-title">
+      <h2>Contas</h2>
+    </div>
+    <div class="group status-cols">
+      <div class="status-col">
+        <div class="row">
+          <div class="row-text">
+            <b>Jira</b>
+            <span *ngIf="jiraLoading">Carregando...</span>
+            <span *ngIf="!jiraLoading && jiraState().connected && jiraState().user && jiraState().instance">Conectado
+              como {{ jiraState().user?.displayName }} em {{ jiraState().instance }}</span>
+            <span *ngIf="!jiraLoading && jiraState().connected && jiraState().email && !jiraState().user">Conectado como
+              {{ jiraState().email }} em {{ jiraState().instance }}</span>
+            <span
+              *ngIf="!jiraLoading && jiraState().connected && !jiraState().email && !jiraState().user">Conectado</span>
+            <span class="form-error" *ngIf="!jiraLoading && jiraError && !showLoginForm">{{ jiraError }}</span>
+            <span *ngIf="!jiraLoading && !jiraState().connected && !jiraError">Desconectado. Conecte-se para usar o
+              sistema.</span>
+          </div>
+          <button class="btn" *ngIf="jiraState().connected" (click)="disconnectJira()" [disabled]="jiraLoading">
+            {{ jiraLoading ? "Desconectando..." : "Desconectar" }}
+          </button>
+          <button class="btn primary" *ngIf="!jiraState().connected" (click)="openLoginForm()">Conectar</button>
+        </div>
+      </div>
+
+      <div class="status-col">
+        <div class="row">
+          <div class="row-text">
+            <b>PontoMais</b>
+            <span *ngIf="pontoMaisState().connected">Conectado como {{ pontoMaisState().account }}</span>
+            <span *ngIf="!pontoMaisState().connected">Desconectado. Conecte para importar as marcações de ponto.</span>
+            <span class="form-error" *ngIf="pontoMaisError && !showPontoMaisForm">{{ pontoMaisError }}</span>
+          </div>
+          <button *ngIf="pontoMaisState().connected" class="btn" (click)="disconnectPontoMais()"
+            [disabled]="pontoMaisLoading">
+            Desconectar
+          </button>
+          <button *ngIf="!pontoMaisState().connected" class="btn primary" (click)="openPontoMaisForm()">
+            Conectar
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="set-section">
+    <div class="set-title">
+      <h2>Status de desenvolvimento</h2>
+      <div class="end">
+        <span class="synced" *ngIf="statusesSyncedLabel" [title]="statusesSyncedLabel">{{ statusesSyncedLabel }}</span>
+        <button class="btn" (click)="syncJiraStatusCatalog()" [disabled]="statusesSyncing || !jiraState().connected">
+          <ng-container *ngIf="statusesSyncing"><span class="spin"></span>Sincronizando…</ng-container>
+          <ng-container *ngIf="!statusesSyncing">
+            <svg class="ic" viewBox="0 0 16 16" aria-hidden="true">
+              <path d="M13 8a5 5 0 0 1-8.9 3.1M3 8a5 5 0 0 1 8.9-3.1" />
+              <path d="M12.25 2.25v2.9h-2.9M3.75 13.75v-2.9h2.9" />
+            </svg>
+            Sincronizar
+          </ng-container>
+        </button>
+        <button class="btn primary" (click)="saveStatusChanges()" [disabled]="!statusesDirty || statusesSaving">
+          Salvar
+        </button>
+      </div>
+    </div>
+    <p class="muted set-note"
+      title="O tempo conta para os worklogs quando a issue está num status marcado. Vale para todos os projetos.">
+      O tempo conta quando a issue está num status marcado. Vale para todos os projetos.
+    </p>
+
+    <div class="group" *ngIf="statusesLoading">
+      <div class="row"><span class="muted">Carregando status…</span></div>
+    </div>
+
+    <div class="group" *ngIf="!statusesLoading && !jiraStatuses.length">
+      <div class="row">
+        <span class="muted">Nenhum status no cache. Sincronize para carregar o catálogo do Jira.</span>
+      </div>
+    </div>
+
+    <div class="group status-cols" *ngIf="!statusesLoading && jiraStatuses.length">
+      <div class="status-col" *ngFor="let column of statusColumns">
+        <label class="row check-row" *ngFor="let status of column.statuses; trackBy: trackStatus"
+          [title]="statusTitle(status)">
+          <input class="cb" type="checkbox" [checked]="status.isDevelopment"
+            (change)="toggleStatusDevelopment(status, $any($event.target).checked)" [disabled]="statusesSaving"
+            [attr.aria-label]="status.name + ' conta como desenvolvimento'" />
+          <span class="status" [style.--c]="statusColor(status)"><span>{{ status.name }}</span></span>
+        </label>
+        <div class="row check-row filler" aria-hidden="true" *ngFor="let filler of column.fillers"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="set-section">
+    <div class="set-title">
+      <h2>Dados locais</h2>
+    </div>
+    <div class="group">
+      <div class="row">
+        <div class="row-text">
+          <b>Apagar dados locais</b>
+          <span>Remove tarefas, histórico de status, worklogs e batidas de ponto guardados neste computador.</span>
+        </div>
+        <button class="btn" (click)="clearLocalData()" [disabled]="clearingLocalData">
+          <ng-container *ngIf="clearingLocalData"><span class="spin"></span>Apagando…</ng-container>
+          <ng-container *ngIf="!clearingLocalData">Apagar</ng-container>
+        </button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="overlay" *ngIf="!jiraState().connected && showLoginForm"
+  (click)="onOverlayClick($event, 'jira')">
+  <form class="dialog sm" role="dialog" aria-modal="true" aria-labelledby="jira-dlg-title" cdkTrapFocus
+    [cdkTrapFocusAutoCapture]="true" (ngSubmit)="connectJira()" autocomplete="off">
+    <div class="dialog-head">
+      <div>
+        <h2 id="jira-dlg-title">Conectar ao Jira</h2>
+        <p>Use o e-mail da sua conta Atlassian e um token da API.</p>
+      </div>
+      <button type="button" class="icon-btn plain" (click)="closeLoginForm()" [disabled]="jiraLoading"
+        aria-label="Fechar">
+        <svg class="ic" viewBox="0 0 16 16" aria-hidden="true">
+          <path d="M4.25 4.25l7.5 7.5M11.75 4.25l-7.5 7.5" />
+        </svg>
+      </button>
+    </div>
+    <div class="dialog-body login-fields">
+      <label class="field">
+        <span>URL do Jira</span>
+        <input cdkFocusInitial type="url" name="jiraUrl" [(ngModel)]="jiraUrl"
+          placeholder="https://empresa.atlassian.net" [disabled]="jiraLoading" />
+      </label>
+      <label class="field">
+        <span>E-mail</span>
+        <input type="email" name="jiraEmail" [(ngModel)]="jiraEmail" placeholder="seu.email@empresa.com"
+          [disabled]="jiraLoading" />
+      </label>
+      <label class="field">
+        <span>Token da API</span>
+        <input type="password" name="jiraToken" [(ngModel)]="jiraToken" placeholder="••••••••••••••••"
+          [disabled]="jiraLoading" />
+      </label>
+      <p class="form-error" *ngIf="jiraError">{{ jiraError }}</p>
+    </div>
+    <div class="dialog-foot">
+      <button type="button" class="btn quiet" (click)="closeLoginForm()" [disabled]="jiraLoading">Cancelar</button>
+      <button type="submit" class="btn primary" [disabled]="jiraLoading">
+        <ng-container *ngIf="jiraLoading"><span class="spin"></span>Conectando…</ng-container>
+        <ng-container *ngIf="!jiraLoading">Conectar</ng-container>
+      </button>
+    </div>
+  </form>
+</div>
+
+<div class="overlay" *ngIf="!pontoMaisState().connected && showPontoMaisForm"
+  (click)="onOverlayClick($event, 'pontomais')">
+  <form class="dialog sm" role="dialog" aria-modal="true" aria-labelledby="pontomais-dlg-title" cdkTrapFocus
+    [cdkTrapFocusAutoCapture]="true" (ngSubmit)="connectPontoMais()" autocomplete="off">
+    <div class="dialog-head">
+      <div>
+        <h2 id="pontomais-dlg-title">Conectar ao PontoMais</h2>
+        <p>Entre com o e-mail e a senha da sua conta do PontoMais.</p>
+      </div>
+      <button type="button" class="icon-btn plain" (click)="closePontoMaisForm()" [disabled]="pontoMaisLoading"
+        aria-label="Fechar">
+        <svg class="ic" viewBox="0 0 16 16" aria-hidden="true">
+          <path d="M4.25 4.25l7.5 7.5M11.75 4.25l-7.5 7.5" />
+        </svg>
+      </button>
+    </div>
+    <div class="dialog-body login-fields">
+      <label class="field">
+        <span>E-mail</span>
+        <input cdkFocusInitial type="email" name="pontoMaisLogin" [(ngModel)]="pontoMaisLogin"
+          placeholder="seu.email@empresa.com" autocomplete="username" [disabled]="pontoMaisLoading" />
+      </label>
+      <label class="field">
+        <span>Senha</span>
+        <input type="password" name="pontoMaisPassword" [(ngModel)]="pontoMaisPassword" placeholder="••••••••"
+          autocomplete="current-password" [disabled]="pontoMaisLoading" />
+      </label>
+      <label class="form-option" title="A senha fica guardada no keyring do sistema">
+        <input class="cb" type="checkbox" name="pontoMaisAutoReconnect" [(ngModel)]="pontoMaisAutoReconnect" />
+        <span>Reconectar automaticamente quando a sessão expirar</span>
+      </label>
+      <p class="form-error" *ngIf="pontoMaisError">{{ pontoMaisError }}</p>
+    </div>
+    <div class="dialog-foot">
+      <button type="button" class="btn quiet" (click)="closePontoMaisForm()" [disabled]="pontoMaisLoading">
+        Cancelar
+      </button>
+      <button type="submit" class="btn primary" [disabled]="!canConnectPontoMais">
+        <ng-container *ngIf="pontoMaisLoading"><span class="spin"></span>Conectando…</ng-container>
+        <ng-container *ngIf="!pontoMaisLoading">Conectar</ng-container>
+      </button>
+    </div>
+  </form>
+</div>

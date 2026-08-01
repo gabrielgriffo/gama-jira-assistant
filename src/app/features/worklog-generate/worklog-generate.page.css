@@ -1,0 +1,239 @@
+.legend {
+  display: flex;
+  gap: 20px;
+  margin: 0 4px 14px;
+  overflow: hidden;
+}
+.legend span {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.sw {
+  width: 18px;
+  height: 8px;
+  border-radius: 999px;
+}
+.sw.punch {
+  background: var(--punch);
+  height: 14px;
+  border-radius: 5px;
+}
+.sw.count {
+  background: var(--count);
+}
+.days {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.day {
+  padding: 0 24px 24px;
+}
+.day-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 16px 0 14px;
+  border-bottom: 1px solid var(--line);
+}
+.day-title {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 18px;
+  line-height: 26px;
+  font-weight: 500;
+  letter-spacing: -0.015em;
+}
+.day-badges {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  gap: 6px;
+  overflow: hidden;
+}
+.day-badges .badge {
+  flex: 0 1 auto;
+}
+.day-actions {
+  flex: none;
+  margin-left: auto;
+}
+.day-empty {
+  margin-top: 16px;
+  color: var(--muted);
+}
+.day-sub {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  margin: 16px 0 14px;
+}
+.metrics {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+}
+.metric {
+  flex: none;
+  min-width: 0;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 0 16px;
+  border-left: 1px solid var(--line-2);
+  color: var(--muted);
+}
+.metric:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+.metric b {
+  flex: none;
+  font-weight: 600;
+  color: var(--ink);
+}
+.metric b.over {
+  color: var(--warn);
+}
+.metric.ponto {
+  flex: 0 1 auto;
+}
+.metric .iv {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 13px;
+  color: var(--faint);
+}
+.tl {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.tl-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 22%) minmax(0, 1fr) 72px 76px;
+  align-items: center;
+  column-gap: 12px;
+  min-height: 58px;
+  padding: 8px 16px;
+  border-radius: 18px;
+  background: var(--surface-2);
+}
+.tl-row.axis-row {
+  min-height: 16px;
+  padding-top: 0;
+  padding-bottom: 0;
+  background: none;
+}
+.axis {
+  position: relative;
+  height: 16px;
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--faint);
+}
+.axis span {
+  position: absolute;
+  transform: translateX(-50%);
+}
+.track {
+  position: relative;
+  height: 30px;
+}
+.track::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  margin-top: -0.5px;
+  background: var(--line-2);
+}
+.track .gl {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  width: 1px;
+  background: var(--line);
+}
+.track .pb {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  border-radius: 8px;
+  background: var(--punch);
+}
+.track .s {
+  position: absolute;
+  top: 10px;
+  bottom: 10px;
+  border-radius: 999px;
+}
+.track .s.count {
+  background: var(--count);
+}
+.tl-label {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.tl-label .key {
+  align-self: flex-start;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tl-label span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--muted);
+}
+.tl-time {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  white-space: nowrap;
+}
+.tl-time b {
+  font-weight: 600;
+}
+.tl-time b small {
+  margin-left: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--warn);
+}
+.tl-time span {
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--muted);
+}
+.tl-act {
+  text-align: right;
+}
+.tl-act .btn.small {
+  background: var(--surface);
+}
+.tl-act .btn.small:hover:not(:disabled) {
+  background: var(--surface-3);
+}
+.tl-act .btn.small.quiet {
+  background: transparent;
+}
+.tl-act .btn.small.quiet:hover:not(:disabled) {
+  background: var(--hover-soft);
+}

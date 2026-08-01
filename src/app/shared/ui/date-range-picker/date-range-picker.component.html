@@ -1,0 +1,40 @@
+<button
+  #trigger
+  type="button"
+  class="btn range-btn"
+  cdkOverlayOrigin
+  #origin="cdkOverlayOrigin"
+  aria-haspopup="dialog"
+  [attr.aria-expanded]="open()"
+  [title]="titlePrefix() + ': ' + datesLabel()"
+  (click)="toggle()"
+>
+  <svg class="ic" viewBox="0 0 16 16" aria-hidden="true">
+    <rect x="2.25" y="3.25" width="11.5" height="10.5" rx="2" />
+    <path d="M2.25 6.75h11.5M5.5 1.75v3M10.5 1.75v3" />
+  </svg>
+  <span class="range-txt">{{ label() }}</span>
+  <svg class="ic chev" viewBox="0 0 16 16" aria-hidden="true">
+    <path d="m4.5 6.5 3.5 3.5 3.5-3.5" />
+  </svg>
+</button>
+
+<ng-template
+  cdkConnectedOverlay
+  [cdkConnectedOverlayOrigin]="origin"
+  [cdkConnectedOverlayOpen]="open()"
+  [cdkConnectedOverlayPositions]="positions"
+  (overlayOutsideClick)="onOutsideClick($event)"
+  (overlayKeydown)="onKeydown($event)"
+  (detach)="close()"
+>
+  <gama-date-range-panel
+    [value]="value()"
+    [today]="today()"
+    [presets]="presets()"
+    [minMonth]="minMonth()"
+    [applyText]="applyText()"
+    (apply)="onApply($event)"
+    (cancel)="close()"
+  />
+</ng-template>

@@ -1,0 +1,162 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.content {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 4px;
+}
+.content > .card {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding-bottom: 12px;
+}
+.content > .card > .tabs,
+.content > .card > .filters {
+  flex: none;
+}
+.table-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  padding: 0 12px;
+}
+.search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.search .ic {
+  position: absolute;
+  left: 12px;
+  color: var(--muted);
+  pointer-events: none;
+}
+.search input {
+  width: 100%;
+  padding-left: 36px;
+}
+.tabs {
+  display: flex;
+  gap: 24px;
+  overflow: hidden;
+  margin: 0 24px;
+  border-bottom: 1px solid var(--line);
+}
+.tabs button {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 54px;
+  padding: 0;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  background: none;
+  color: var(--muted);
+  font-size: 15px;
+  font-weight: 500;
+}
+.tabs button:hover {
+  color: var(--ink);
+}
+.tabs button[aria-selected="true"] {
+  color: var(--ink);
+  border-bottom-color: var(--ink);
+}
+.tabs .n {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--faint);
+}
+.filters {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 24px 8px;
+}
+.result {
+  flex: none;
+  font-size: 13px;
+  color: var(--faint);
+  white-space: nowrap;
+}
+table.list {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+.list th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  height: 40px;
+  padding: 0 12px;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--faint);
+  background: var(--surface);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.list td {
+  height: 60px;
+  padding: 0 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.list tbody tr:hover td {
+  background: var(--hover);
+}
+.list tbody tr:hover td:first-child {
+  border-radius: 16px 0 0 16px;
+}
+.list tbody tr:hover td:last-child {
+  border-radius: 0 16px 16px 0;
+}
+.list td.issue {
+  white-space: normal;
+}
+.list td.actions {
+  text-align: right;
+  padding-left: 0;
+}
+.issue-title {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-weight: 500;
+}
+.issue-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  margin-top: 2px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.issue-meta .key {
+  font-size: 12px;
+}
+.issue-meta > span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

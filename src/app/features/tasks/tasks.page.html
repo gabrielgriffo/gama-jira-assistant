@@ -1,0 +1,100 @@
+<header class="page-head">
+  <div class="title-row">
+    <h1>Tarefas</h1>
+    <span class="sub">{{ tasks.length }} atribuídas a você, atualizadas no período</span>
+  </div>
+  <div class="toolbar">
+    <gama-date-range-picker [value]="range" [timeZone]="timeZone" titlePrefix="Período usado na sincronização"
+      applyText="Aplicar e sincronizar" (applied)="applyRange($event)" />
+    <div class="spacer"></div>
+    <button class="btn" (click)="loadTasks(true)" [disabled]="syncing">
+      <ng-container *ngIf="syncing"><span class="spin"></span>Sincronizando…</ng-container>
+      <ng-container *ngIf="!syncing">
+        <svg class="ic" viewBox="0 0 16 16" aria-hidden="true">
+          <path d="M13 8a5 5 0 0 1-8.9 3.1M3 8a5 5 0 0 1 8.9-3.1" />
+          <path d="M12.25 2.25v2.9h-2.9M3.75 13.75v-2.9h2.9" />
+        </svg>
+        Sincronizar
+      </ng-container>
+    </button>
+  </div>
+</header>
+
+<div class="content">
+  <section class="card">
+    <div class="tabs" role="tablist" aria-label="Categoria do status">
+      <button role="tab" aria-selected="true">
+        Todas<span class="n">{{ tasks.length }}</span>
+      </button>
+    </div>
+
+    <div class="filters">
+      <label class="search">
+        <svg class="ic" viewBox="0 0 16 16" aria-hidden="true">
+          <circle cx="7" cy="7" r="4.25" />
+          <path d="m10.25 10.25 3.25 3.25" />
+        </svg>
+        <input type="search" placeholder="Buscar por chave ou título" aria-label="Buscar tarefas" />
+      </label>
+      <span class="result">Mostrando {{ tasks.length }} {{ tasks.length === 1 ? "tarefa" : "tarefas" }}</span>
+    </div>
+
+    <div class="table-scroll">
+      <table class="list">
+        <colgroup>
+          <col />
+          <col style="width: 200px" />
+          <col style="width: 140px" />
+          <col style="width: 140px" />
+          <col style="width: 60px" />
+        </colgroup>
+        <thead>
+          <tr>
+            <th>Issue</th>
+            <th>Status</th>
+            <th>Vencimento</th>
+            <th>Atualizada</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let task of tasks; trackBy: trackTask">
+            <td class="issue">
+              <span class="issue-title" [title]="task.summary">{{ task.summary }}</span>
+              <span class="issue-meta">
+                <button class="key" (click)="openTask(task, $event)" [title]="'Abrir no Jira'">{{ task.key }}</button>
+                <span *ngIf="task.issueTypeName">{{ task.issueTypeName }},
+                  {{ task.priorityName ? "prioridade " + task.priorityName : "sem prioridade" }}</span>
+              </span>
+            </td>
+            <td>
+              <span class="status" [style.--c]="statusColor(task)">
+                <span>{{ task.statusName }}</span>
+              </span>
+            </td>
+            <td>
+              <span class="faint" *ngIf="!task.dueDate">—</span>
+              <span *ngIf="task.dueDate">{{ task.dueDate }}</span>
+            </td>
+            <td class="muted">{{ updatedLabel(task) }}</td>
+            <td class="actions">
+              <button class="icon-btn" (click)="viewStatusHistory(task, $event)" [title]="'Ver histórico'"
+                [attr.aria-label]="'Ver histórico de ' + task.key">
+                <svg class="ic" viewBox="0 0 16 16" aria-hidden="true">
+                  <path d="M2.75 8a5.25 5.25 0 1 0 1.6-3.8" />
+                  <path d="M2.5 2.5v2.25h2.25M8 5.25V8l1.75 1.25" />
+                </svg>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="empty" *ngIf="!loading && !errorMessage && !tasks.length">Nenhuma tarefa com esses filtros.</div>
+    </div>
+  </section>
+</div>
+
+<app-status-history-modal [isOpen]="isModalOpen" [taskKey]="selectedTaskKey" [statusHistory]="statusHistory"
+  [loading]="loadingStatusHistory" [syncingInBackground]="syncingStatusHistoryInBackground"
+  [earliestDate]="earliestDate" [latestDate]="latestDate" (close)="closeModal()"></app-status-history-modal>

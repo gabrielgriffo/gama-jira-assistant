@@ -1,0 +1,50 @@
+<button
+  #trigger
+  type="button"
+  class="btn select-btn"
+  cdkOverlayOrigin
+  #origin="cdkOverlayOrigin"
+  aria-haspopup="listbox"
+  [attr.aria-expanded]="open()"
+  [attr.aria-label]="ariaLabel() || null"
+  [disabled]="disabled()"
+  (click)="toggle()"
+  (keydown)="onTriggerKeydown($event)"
+>
+  <span class="select-txt">{{ label() }}</span>
+  <svg class="ic chev" viewBox="0 0 16 16" aria-hidden="true">
+    <path d="m4.5 6.5 3.5 3.5 3.5-3.5" />
+  </svg>
+</button>
+
+<ng-template
+  cdkConnectedOverlay
+  [cdkConnectedOverlayOrigin]="origin"
+  [cdkConnectedOverlayOpen]="open()"
+  [cdkConnectedOverlayPositions]="positions"
+  [cdkConnectedOverlayMinWidth]="trigger.offsetWidth"
+  (overlayOutsideClick)="onOutsideClick($event)"
+  (overlayKeydown)="onKeydown($event)"
+  (detach)="close()"
+>
+  <div class="select-pop" role="listbox" [attr.aria-label]="ariaLabel() || null">
+    @for (option of options(); track option.value; let i = $index) {
+      <button
+        type="button"
+        role="option"
+        class="select-opt"
+        [class.active]="i === activeIndex()"
+        [attr.aria-selected]="i === selectedIndex()"
+        (mouseenter)="activeIndex.set(i)"
+        (click)="choose(option)"
+      >
+        <span>{{ option.label }}</span>
+        @if (i === selectedIndex()) {
+          <svg class="ic check" viewBox="0 0 16 16" aria-hidden="true">
+            <path d="m3.5 8.5 3 3 6-7" />
+          </svg>
+        }
+      </button>
+    }
+  </div>
+</ng-template>

@@ -1,0 +1,201 @@
+<app-toast></app-toast>
+
+<header class="page-head">
+  <div class="title-row">
+    <h1>Gerar worklogs</h1>
+    <span class="sub" title="Tempo em desenvolvimento, com você, dentro do ponto"
+      >Tempo em desenvolvimento, com você, dentro do ponto</span
+    >
+  </div>
+  <div class="toolbar">
+    <gama-date-range-picker
+      [value]="range"
+      [timeZone]="timeZone"
+      [presets]="presets"
+      titlePrefix="Período dos worklogs"
+      applyText="Aplicar e sincronizar"
+      (applied)="applyRange($event)"
+    />
+    <div class="spacer"></div>
+    <button class="btn" (click)="syncPeriod()" [disabled]="syncing">
+      <ng-container *ngIf="syncing"><span class="spin"></span>Sincronizando…</ng-container>
+      <ng-container *ngIf="!syncing">
+        <svg class="ic" viewBox="0 0 16 16" aria-hidden="true">
+          <path d="M13 8a5 5 0 0 1-8.9 3.1M3 8a5 5 0 0 1 8.9-3.1" />
+          <path d="M12.25 2.25v2.9h-2.9M3.75 13.75v-2.9h2.9" />
+        </svg>
+        Sincronizar
+      </ng-container>
+    </button>
+    <button
+      class="btn"
+      (click)="importPonto()"
+      [disabled]="importingPonto || !hasPontoMais"
+      [title]="hasPontoMais ? 'Importar as marcações do PontoMais no período' : 'Conecte o PontoMais em Configurações'"
+    >
+      <ng-container *ngIf="importingPonto"><span class="spin"></span>Importando…</ng-container>
+      <ng-container *ngIf="!importingPonto">
+        <svg class="ic" viewBox="0 0 16 16" aria-hidden="true">
+          <path d="M8 2.5v7.5M4.75 7 8 10.25 11.25 7M3 13.25h10" />
+        </svg>
+        Importar ponto
+      </ng-container>
+    </button>
+  </div>
+</header>
+
+<div class="content">
+  <div class="legend">
+    <span title="Horário do ponto"><i class="sw punch"></i>Ponto</span>
+    <span title="Em desenvolvimento, contado"><i class="sw count"></i>Contado</span>
+  </div>
+
+  <div *ngIf="loadingTimeline" class="empty" style="padding: 60px 16px"><span class="spin"></span> Carregando…</div>
+
+  <div *ngIf="!loadingTimeline && timeline.length === 0" class="empty" style="padding: 60px 16px">
+    {{ syncing ? "Sincronizando o período…" : "Nenhum dia útil no período selecionado." }}
+  </div>
+
+  <div *ngIf="!loadingTimeline && timeline.length > 0" class="days">
+    <section class="card day" *ngFor="let day of timeline; trackBy: trackDay">
+      <div class="day-head">
+        <h2 class="day-title">{{ dayTitle(day.date) }}<span class="badge dark" *ngIf="day.is_today">Hoje</span></h2>
+        <div class="day-badges">
+          <span class="badge info" *ngIf="day.registered_minutes > 0 && day.gama_synced_count === 0"
+            >Já há {{ hfmt(day.registered_minutes) }} no Jira</span
+          >
+          <span class="badge ok" *ngIf="day.gama_synced_count > 0"
+            >{{ day.gama_synced_count }} {{ day.gama_synced_count === 1 ? "enviado" : "enviados" }} pelo GAMA</span
+          >
+          <span class="badge err" *ngIf="draftCount(day, 'failed') > 0">{{ draftCount(day, "failed") }} com falha</span>
+          <span class="badge" *ngIf="draftCount(day, 'pending') > 0"
+            >{{ draftCount(day, "pending") }} {{ draftCount(day, "pending") === 1 ? "rascunho" : "rascunhos" }}</span
+          >
+          <span class="badge warn" *ngIf="day.incomplete" [title]="'Ponto incompleto: ' + lastPunch(day) + ' sem saída'"
+            >Ponto incompleto: {{ lastPunch(day) }} sem saída</span
+          >
+          <span class="badge" *ngIf="day.open">Em andamento</span>
+          <span class="badge warn" *ngIf="calculated(day) > day.total_minutes && day.total_minutes > 0"
+            >Passa do ponto em {{ hfmt(calculated(day) - day.total_minutes) }}</span
+          >
+        </div>
+        <div class="day-actions" *ngIf="day.tasks_worked.length > 0">
+          <button class="btn" *ngIf="day.open" disabled title="Registre ao fim do expediente">Registrar dia</button>
+          <button class="btn primary" *ngIf="!day.open && hasOpenDrafts(day)" (click)="showDayWorklog(day)">
+            Revisar rascunhos
+          </button>
+          <button
+            class="btn"
+            *ngIf="!day.open && !hasOpenDrafts(day) && day.gama_synced_count > 0"
+            (click)="showDayWorklog(day)"
+          >
+            Registrar de novo
+          </button>
+          <button
+            class="btn primary"
+            *ngIf="!day.open && !hasOpenDrafts(day) && day.gama_synced_count === 0"
+            (click)="showDayWorklog(day)"
+          >
+            Registrar dia
+          </button>
+        </div>
+      </div>
+
+      <p class="day-empty" *ngIf="day.entries.length === 0">Sem marcações de ponto neste dia.</p>
+
+      <div class="day-sub" *ngIf="day.entries.length > 0">
+        <div class="metrics">
+          <span class="metric ponto" [title]="'Ponto ' + punchText(day)"
+            >Ponto<b>{{ hfmt(day.total_minutes) }}</b
+            ><span class="iv">{{ punchText(day) }}</span></span
+          >
+          <span class="metric"
+            >Calculado<b [class.over]="calculated(day) > day.total_minutes">{{ hfmt(calculated(day)) }}</b></span
+          >
+          <span class="metric"
+            >No Jira<b>{{ hfmt(day.registered_minutes) }}</b></span
+          >
+        </div>
+      </div>
+
+      <p class="day-empty" *ngIf="day.entries.length > 0 && day.tasks_worked.length === 0">
+        Nenhuma issue em desenvolvimento com você neste dia.
+      </p>
+
+      <div class="tl" *ngIf="day.tasks_worked.length > 0">
+        <div class="tl-row axis-row">
+          <div></div>
+          <div class="axis">
+            <span *ngFor="let tick of axisTicks" [style.left]="tick.left">{{ tick.label }}</span>
+          </div>
+          <div></div>
+          <div></div>
+        </div>
+        <div class="tl-row" *ngFor="let task of day.tasks_worked; trackBy: trackTask">
+          <div class="tl-label">
+            <button class="key" (click)="onTaskClick(task.key)">{{ task.key }}</button>
+            <span [title]="task.summary">{{ task.summary }}</span>
+          </div>
+          <div class="track">
+            <i class="gl" *ngFor="let left of axisGuides" [style.left]="left"></i>
+            <i class="pb" *ngFor="let punch of day.punch_intervals" [ngStyle]="spanStyle(punch)"></i>
+            <i
+              class="s count"
+              *ngFor="let seg of task.counted_segments"
+              [ngStyle]="spanStyle(seg)"
+              [title]="clock(seg.start) + '–' + clock(seg.end)"
+            ></i>
+          </div>
+          <div class="tl-time">
+            <b
+              >{{ hfmt(finalMinutes(day, task))
+              }}<small *ngIf="adjustment(day, task) !== 0"
+                >{{ adjustment(day, task) > 0 ? "+" : "" }}{{ hfmt(adjustment(day, task)) }}</small
+              ></b
+            >
+            <span>{{ devRange(task) }}</span>
+          </div>
+          <div class="tl-act">
+            <button class="btn small quiet" *ngIf="adjustment(day, task) !== 0" (click)="unfix(day, task)">
+              Desfazer
+            </button>
+            <button
+              class="btn small"
+              *ngIf="adjustment(day, task) === 0 && canFix(day)"
+              (click)="fix(day, task)"
+              [title]="
+                (difference(day) > 0 ? 'Somar ' : 'Tirar ') +
+                hfmt(difference(day) < 0 ? -difference(day) : difference(day)) +
+                ' desta issue'
+              "
+            >
+              Corrigir
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<app-status-history-modal
+  [isOpen]="isModalOpen"
+  [taskKey]="selectedTaskKey"
+  [statusHistory]="statusHistory"
+  [loading]="loadingStatusHistory"
+  [syncingInBackground]="syncingStatusHistoryInBackground"
+  [earliestDate]="earliestDate"
+  [latestDate]="latestDate"
+  (close)="closeModal()"
+>
+</app-status-history-modal>
+
+<app-day-worklog-preview-modal
+  [isOpen]="showDayWorklogPreview"
+  [day]="dayWorklogPreviewDay"
+  [drafts]="dayWorklogPreviewDrafts"
+  [timeZone]="timeZone"
+  (close)="closeDayWorklogPreview()"
+  (sent)="onDayWorklogSent()"
+>
+</app-day-worklog-preview-modal>

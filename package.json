@@ -1,0 +1,40 @@
+{
+  "name": "gama",
+  "version": "0.1.0",
+  "author": "Gabriel Griffo",
+  "scripts": {
+    "ng": "ng",
+    "start": "ng serve",
+    "build": "ng build",
+    "watch": "ng build --watch --configuration development",
+    "tauri": "tauri",
+    "format": "prettier --write \"src/**/*.{ts,html,css,json}\" && cargo fmt --manifest-path src-tauri/Cargo.toml",
+    "format:check": "prettier --check \"src/**/*.{ts,html,css,json}\" && cargo fmt --manifest-path src-tauri/Cargo.toml --check"
+  },
+  "private": true,
+  "dependencies": {
+    "@angular/cdk": "^20.2.14",
+    "@angular/common": "^20.3.33",
+    "@angular/compiler": "^20.3.33",
+    "@angular/core": "^20.3.33",
+    "@angular/forms": "^20.3.33",
+    "@angular/platform-browser": "^20.3.33",
+    "@angular/router": "^20.3.33",
+    "@fontsource/inter": "5.3.0",
+    "@fontsource/jetbrains-mono": "5.3.0",
+    "@tauri-apps/api": "^2.12.1",
+    "@tauri-apps/plugin-log": "^2.10.0",
+    "@tauri-apps/plugin-opener": "^2.7.0",
+    "rxjs": "~7.8.2",
+    "tslib": "^2.8.1",
+    "zone.js": "~0.15.1"
+  },
+  "devDependencies": {
+    "@angular/build": "^20.3.33",
+    "@angular/cli": "^20.3.33",
+    "@angular/compiler-cli": "^20.3.33",
+    "@tauri-apps/cli": "^2.12.1",
+    "prettier": "3.9.9",
+    "typescript": "~5.8.3"
+  }
+}

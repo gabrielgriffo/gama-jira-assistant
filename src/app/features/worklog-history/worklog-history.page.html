@@ -1,0 +1,212 @@
+<app-toast></app-toast>
+
+<header class="page-head">
+  <div class="title-row">
+    <h1>Histórico de worklogs</h1>
+    <span class="sub">Seus worklogs no Jira, por issue e dia</span>
+  </div>
+  <div class="toolbar">
+    <gama-date-range-picker
+      [value]="range"
+      [timeZone]="timeZone"
+      [presets]="presets"
+      titlePrefix="Período do histórico"
+      applyText="Aplicar e sincronizar"
+      (applied)="applyRange($event)"
+    />
+    <div class="spacer"></div>
+    <span class="synced" *ngIf="syncedLabel" [title]="syncedLabel">{{ syncedLabel }}</span>
+    <button class="btn" (click)="syncWorklogs()" [disabled]="syncing">
+      <ng-container *ngIf="syncing"><span class="spin"></span>Sincronizando…</ng-container>
+      <ng-container *ngIf="!syncing">
+        <svg class="ic" viewBox="0 0 16 16" aria-hidden="true">
+          <path d="M13 8a5 5 0 0 1-8.9 3.1M3 8a5 5 0 0 1 8.9-3.1" />
+          <path d="M12.25 2.25v2.9h-2.9M3.75 13.75v-2.9h2.9" />
+        </svg>
+        Sincronizar
+      </ng-container>
+    </button>
+  </div>
+</header>
+
+<div class="content">
+  <div *ngIf="loading" class="empty" style="padding: 60px 16px"><span class="spin"></span> Carregando…</div>
+
+  <ng-container *ngIf="!loading && response">
+    <div class="kpis">
+      <div class="card kpi">
+        <span class="label" title="Registrado no Jira">Registrado</span>
+        <b>{{ hfmt(registeredMinutes) }}</b>
+        <span class="badge" [title]="response.totalWorklogs + ' worklogs em ' + response.uniqueIssues + ' issues'"
+          >{{ response.totalWorklogs }} worklogs</span
+        >
+      </div>
+      <div class="card kpi">
+        <span class="label" title="Ponto no período">Ponto</span>
+        <b>{{ hfmt(pontoMinutes) }}</b>
+        <span class="badge" title="Dias com marcação de ponto"
+          >{{ pontoDays }} {{ pontoDays === 1 ? "dia" : "dias" }}</span
+        >
+      </div>
+      <div class="card kpi">
+        <span class="label">Diferença</span>
+        <b>{{ hfmt(difference) }}</b>
+        <span class="badge" [class.err]="difference < -10" [class.ok]="difference >= -10">
+          <svg class="ic" viewBox="0 0 16 16" aria-hidden="true" *ngIf="difference < -10">
+            <path d="M5 5l6 6M11 6v5H6" />
+          </svg>
+          <svg class="ic" viewBox="0 0 16 16" aria-hidden="true" *ngIf="difference >= -10">
+            <path d="M5 11 11 5M6 5h5v5" />
+          </svg>
+          {{ difference < -10 ? "abaixo" : "em dia" }}
+        </span>
+      </div>
+      <div class="card kpi">
+        <span class="label" title="Dias com horas faltando">Dias pendentes</span>
+        <b>{{ pendingDays }}</b>
+        <span class="badge" [class.warn]="pendingDays > 0" [class.ok]="pendingDays === 0">{{
+          pendingDays > 0 ? "a registrar" : "nenhum"
+        }}</span>
+      </div>
+    </div>
+
+    <section class="card">
+      <div class="card-head">
+        <h2>Worklogs do período</h2>
+        <div class="end">
+          <div class="seg" role="group" aria-label="Visualização">
+            <button (click)="viewMode = 'grid'" [attr.aria-pressed]="viewMode === 'grid'">Grade</button>
+            <button (click)="viewMode = 'day'" [attr.aria-pressed]="viewMode === 'day'">Por dia</button>
+          </div>
+        </div>
+      </div>
+
+      <ng-container *ngIf="viewMode === 'day'">
+        <div class="empty" *ngIf="days.length === 0">
+          {{ syncing ? "Sincronizando worklogs…" : "Nenhum worklog nem marcação de ponto no período." }}
+        </div>
+        <div class="hdays data-scroll" *ngIf="days.length > 0">
+          <section class="hday" *ngFor="let day of days; trackBy: trackDay">
+            <div class="hday-head">
+              <h3>{{ dayTitle(day.date) }}</h3>
+              <span class="badge dark" *ngIf="day.isToday">Hoje</span>
+              <div class="right">
+                <span class="badge err" *ngIf="day.zeroWorklogs > 0">{{ day.zeroWorklogs }} sem duração</span>
+                <ng-container *ngIf="day.pontoMinutes > 0">
+                  <span class="badge warn" *ngIf="isPending(day)"
+                    >{{ hfmt(day.pontoMinutes - day.registeredMinutes) }} a menos que o ponto</span
+                  >
+                  <span class="faint" *ngIf="!isPending(day)">ponto {{ hfmt(day.pontoMinutes) }}</span>
+                </ng-container>
+                <span class="tot">{{ hfmt(day.registeredMinutes) }}</span>
+              </div>
+            </div>
+            <div class="scroll-x" *ngIf="day.worklogs.length > 0">
+              <div class="hentries">
+                <ng-container *ngFor="let worklog of day.worklogs; trackBy: trackWorklog">
+                  <span class="muted">{{ timeRange(worklog) }}</span>
+                  <span
+                    ><button class="key" (click)="openIssue(worklog.issueBrowseUrl)" title="Abrir no Jira">
+                      {{ worklog.issueKey }}
+                    </button></span
+                  >
+                  <span class="sum" [title]="worklog.issueSummary">{{ worklog.issueSummary }}</span>
+                  <span
+                    class="dur"
+                    [class.zero]="isZero(worklog)"
+                    [title]="isZero(worklog) ? 'Worklog registrado no Jira sem duração' : ''"
+                    >{{ hfmt(worklog.timeSpentSeconds / 60) }}</span
+                  >
+                  <span class="cmt" [title]="worklog.comment || ''">
+                    <span *ngIf="!worklog.comment" class="faint">sem comentário</span>
+                    <ng-container *ngIf="worklog.comment">{{ worklog.comment }}</ng-container>
+                  </span>
+                </ng-container>
+              </div>
+            </div>
+            <p class="none" *ngIf="day.worklogs.length === 0">Nenhum worklog registrado neste dia.</p>
+          </section>
+        </div>
+      </ng-container>
+
+      <ng-container *ngIf="viewMode === 'grid'">
+        <div class="empty" *ngIf="gridRows.length === 0">Nenhum worklog registrado no período.</div>
+        <div class="data-scroll" *ngIf="gridRows.length > 0">
+          <table class="grid">
+            <thead>
+              <tr>
+                <th class="first">Issue</th>
+                <th class="total">Total</th>
+                <th
+                  *ngFor="let date of gridDays"
+                  [class]="columnClass(date)"
+                  [attr.aria-disabled]="isWeekend(date) ? 'true' : null"
+                  [title]="isWeekend(date) ? 'Fim de semana' : ''"
+                >
+                  <b>{{ dayNumber(date) }}</b
+                  >{{ weekdayShort(date) }}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let row of gridRows">
+                <th class="first" [title]="row.issueSummary">
+                  <button class="key" (click)="openIssue(row.issueBrowseUrl)">{{ row.issueKey }}</button
+                  ><span>{{ row.issueSummary }}</span>
+                </th>
+                <td class="total">{{ gfmt(row.totalMinutes) }}</td>
+                <ng-container *ngFor="let minutes of row.cells; let i = index">
+                  <td
+                    *ngIf="minutes > 0 || row.zeroCells[i] > 0"
+                    class="v"
+                    [ngClass]="columnClass(gridDays[i])"
+                    [class.zero]="row.zeroCells[i] > 0"
+                    [style.--a]="cellAlpha(minutes)"
+                    [title]="row.zeroCells[i] > 0 ? row.zeroCells[i] + ' worklog(s) sem duração neste dia' : ''"
+                  >
+                    <span>{{ gfmt(minutes) }}</span>
+                  </td>
+                  <td
+                    *ngIf="minutes === 0 && row.zeroCells[i] === 0"
+                    class="faint"
+                    [ngClass]="columnClass(gridDays[i])"
+                  >
+                    {{ isWeekend(gridDays[i]) ? "" : "·" }}
+                  </td>
+                </ng-container>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr>
+                <th class="first">Total registrado</th>
+                <td class="total">{{ gfmt(registeredMinutes) }}</td>
+                <td *ngFor="let date of gridDays; let i = index" [ngClass]="columnClass(date)">
+                  {{ columnRegistered(i) > 0 || !isWeekend(date) ? gfmt(columnRegistered(i)) : "" }}
+                </td>
+              </tr>
+              <tr>
+                <th class="first">Ponto</th>
+                <td class="total muted">{{ gfmt(pontoMinutes) }}</td>
+                <td *ngFor="let date of gridDays" class="muted" [ngClass]="columnClass(date)">
+                  {{ columnPonto(date) > 0 ? gfmt(columnPonto(date)) : isWeekend(date) ? "" : "—" }}
+                </td>
+              </tr>
+              <tr>
+                <th class="first">Diferença</th>
+                <td class="total" [class.miss]="difference < -10">{{ signedGfmt(difference) }}</td>
+                <td
+                  *ngFor="let date of gridDays; let i = index"
+                  [ngClass]="columnClass(date)"
+                  [class.miss]="isMissing(i, date)"
+                  [class.faint]="!isMissing(i, date)"
+                >
+                  {{ columnPonto(date) > 0 ? signedGfmt(columnDiff(i, date)) : isWeekend(date) ? "" : "—" }}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </ng-container>
+    </section>
+  </ng-container>
+</div>

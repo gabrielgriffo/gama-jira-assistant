@@ -1,0 +1,59 @@
+<div class="range-pop" role="dialog" aria-label="Escolher período" cdkTrapFocus [cdkTrapFocusAutoCapture]="true">
+  <div class="range-presets">
+    @for (preset of presets(); track preset.id) {
+      <button type="button" [attr.aria-pressed]="activePresetId() === preset.id" (click)="choosePreset(preset)">
+        {{ preset.label }}
+      </button>
+    }
+  </div>
+
+  <div class="range-main">
+    <div class="cal-scroll" #scroller (mouseleave)="preview(null)">
+      <div class="cal-wd-row" aria-hidden="true">
+        @for (w of weekdays; track $index) {
+          <span class="cal-wd">{{ w }}</span>
+        }
+      </div>
+
+      @for (month of months(); track month.key) {
+        <section class="cal-month">
+          <div class="cal-mtitle">{{ month.title }}</div>
+          <div class="cal-grid">
+            @for (i of month.leading; track i) {
+              <span></span>
+            }
+            @for (day of month.days; track day.date) {
+              <button
+                type="button"
+                class="cal-day"
+                [attr.data-date]="day.date"
+                [attr.aria-label]="day.day + ' de ' + month.title"
+                [disabled]="day.disabled"
+                [class.today]="day.isToday"
+                [class.start]="isStart(day.date)"
+                [class.end]="isEnd(day.date)"
+                [class.in]="isIn(day.date)"
+                [class.edge-l]="day.isFirstOfMonth"
+                [class.edge-r]="day.isLastOfMonth"
+                (click)="pick(day.date)"
+                (mouseenter)="preview(day.disabled ? null : day.date)"
+              >
+                <span>{{ day.day }}</span>
+              </button>
+            }
+          </div>
+        </section>
+      }
+    </div>
+
+    <div class="range-foot">
+      <span class="range-sum">{{ summary() }}</span>
+      <div class="range-actions">
+        <button type="button" class="btn small quiet" (click)="cancel.emit()">Cancelar</button>
+        <button type="button" class="btn small primary" [disabled]="!draft().start" (click)="confirm()">
+          {{ applyText() }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

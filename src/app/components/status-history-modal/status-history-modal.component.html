@@ -1,0 +1,43 @@
+<div class="overlay" *ngIf="isOpen" (click)="onBackdropClick($event)">
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlg-title">
+    <div class="dialog-head">
+      <div>
+        <h2 id="dlg-title">Histórico de {{ taskKey }}</h2>
+        <p *ngIf="!loading && earliestDate && latestDate">
+          Mudanças de {{ formatDay(earliestDate) }} a {{ formatDay(latestDate)
+          }}{{ syncingInBackground ? ". Buscando mudanças novas…" : "." }}
+        </p>
+        <p *ngIf="loading">Carregando histórico...</p>
+      </div>
+      <button class="icon-btn plain" (click)="onClose()" aria-label="Fechar">
+        <svg class="ic" viewBox="0 0 16 16" aria-hidden="true">
+          <path d="M4.25 4.25l7.5 7.5M11.75 4.25l-7.5 7.5" />
+        </svg>
+      </button>
+    </div>
+
+    <div class="dialog-body">
+      <div *ngIf="loading" class="empty"><span class="spin"></span> Carregando...</div>
+
+      <div *ngIf="!loading && statusHistory.length === 0" class="empty">Nenhuma mudança de status encontrada.</div>
+
+      <div *ngIf="!loading && statusHistory.length > 0" class="cl">
+        <div class="cl-entry" *ngFor="let entry of statusHistory; trackBy: trackEntry">
+          <span class="cl-dot"></span>
+          <div class="cl-when">
+            <b>{{ formatWhen(entry.jiraCreatedAt) }}</b>
+            <span>{{ entry.authorDisplayName || "Automação" }}</span>
+          </div>
+          <div class="cl-items">
+            <div class="item" *ngFor="let change of entry.items">
+              <span class="field-name">{{ fieldLabel(change) }}</span>
+              <span class="from" [title]="change.fromString || 'vazio'">{{ change.fromString || "vazio" }}</span>
+              <span class="faint">→</span>
+              <span [title]="change.toString || 'vazio'">{{ change.toString || "vazio" }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

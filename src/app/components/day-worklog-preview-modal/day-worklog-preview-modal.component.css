@@ -1,0 +1,142 @@
+.dialog.wide {
+  width: 80%;
+  min-width: 640px;
+}
+.note {
+  padding: 10px 16px;
+  margin-bottom: 8px;
+  border-radius: 14px;
+  background: var(--warn-soft);
+}
+.note.err {
+  background: var(--err-soft);
+}
+.note.info {
+  background: var(--info-soft);
+}
+.drafts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.draft-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 112px 76px minmax(0, 1.2fr) 116px 28px;
+  column-gap: 8px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 18px;
+  background: var(--surface-2);
+}
+.draft-row.hd-row {
+  padding-top: 0;
+  padding-bottom: 0;
+  background: none;
+}
+.draft-row .hd {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--faint);
+}
+.draft-row input {
+  width: 100%;
+  background: var(--surface);
+}
+input.sm {
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 10px;
+  font-size: 13px;
+}
+.draft-row .iss {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding-left: 4px;
+}
+.draft-row .iss b {
+  font-weight: 600;
+}
+.draft-row .iss span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--muted);
+}
+.drafts .bad {
+  box-shadow: 0 0 0 1.5px var(--err);
+}
+.drafts .row-err {
+  grid-column: 1 / -1;
+  padding: 6px 0 0 4px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--err);
+}
+.drafts .row-err:empty {
+  display: none;
+}
+.st {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  background: var(--surface-3);
+  color: var(--ink-2);
+}
+.st.sending {
+  background: var(--info-soft);
+  color: var(--accent);
+}
+.st.sent {
+  background: var(--lime);
+  color: var(--on-lime);
+}
+.st.failed {
+  background: var(--err-soft);
+  color: var(--err);
+}
+.st .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.confirm {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 8px 8px 18px;
+  border-radius: 18px;
+  background: var(--surface-2);
+}
+.confirm span {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-weight: 500;
+}
+details.reqs {
+  margin-top: 16px;
+}
+details.reqs summary {
+  color: var(--muted);
+  font-size: 13px;
+}
+details.reqs pre {
+  margin: 8px 0 0;
+  padding: 14px 16px;
+  overflow-x: auto;
+  border-radius: 16px;
+  background: var(--surface-2);
+  font: 12px/20px var(--mono);
+}
