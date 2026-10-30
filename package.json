@@ -35,6 +35,6 @@
     "@angular/compiler-cli": "^20.3.33",
     "@tauri-apps/cli": "^2.12.1",
     "prettier": "3.9.9",
-    "typescript": "~5.8.3"
+    "typescript": "~7.0.2"
   }
 }
