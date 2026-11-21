@@ -179,13 +179,14 @@ jobs:
           if (!packageSection) {
             throw new Error("Could not find [package] section in Cargo.toml");
           }
-          const updatedPackageSection = packageSection[0].replace(
-            /^version\s*=\s*"[^"]+"/m,
-            `version = "${version}"`
-          );
-          if (updatedPackageSection === packageSection[0]) {
+          const versionLine = /^version\s*=\s*"[^"]+"/m;
+          if (!versionLine.test(packageSection[0])) {
             throw new Error("Could not find version inside [package] in Cargo.toml");
           }
+          const updatedPackageSection = packageSection[0].replace(
+            versionLine,
+            `version = "${version}"`
+          );
           cargoToml = cargoToml.replace(packageSection[0], updatedPackageSection);
           fs.writeFileSync(cargoPath, cargoToml);
 
