@@ -18,12 +18,12 @@
   "private": true,
   "dependencies": {
     "@angular/cdk": "^20.2.14",
-    "@angular/common": "^20.3.33",
-    "@angular/compiler": "^20.3.33",
-    "@angular/core": "^20.3.33",
-    "@angular/forms": "^20.3.33",
-    "@angular/platform-browser": "^20.3.33",
-    "@angular/router": "^20.3.33",
+    "@angular/common": "^20.3.35",
+    "@angular/compiler": "^20.3.35",
+    "@angular/core": "^20.3.35",
+    "@angular/forms": "^20.3.35",
+    "@angular/platform-browser": "^20.3.35",
+    "@angular/router": "^20.3.35",
     "@fontsource/dm-sans": "5.2.8",
     "@fontsource/jetbrains-mono": "5.3.0",
     "@fontsource/sora": "5.2.8",
@@ -37,7 +37,7 @@
   "devDependencies": {
     "@angular/build": "^20.3.33",
     "@angular/cli": "^20.3.33",
-    "@angular/compiler-cli": "^20.3.33",
+    "@angular/compiler-cli": "^20.3.35",
     "@tauri-apps/cli": "^2.12.1",
     "prettier": "3.9.9",
     "typescript": "~5.8.3"

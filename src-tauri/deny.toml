@@ -4,6 +4,11 @@ yanked = "deny"
 ignore = [
   { id = "RUSTSEC-2024-0370", reason = "proc-macro-error is a transitive build-time dependency of the Tauri GTK stack on Linux" },
   { id = "RUSTSEC-2024-0429", reason = "glib 0.18 is pulled by the Tauri GTK stack on Linux; the affected iterator is not used by the app" },
+  { id = "RUSTSEC-2026-0543", reason = "chrono is unmaintained but has no known vulnerability and is used directly by the app; replacing it requires migrating to jiff" },
+  { id = "RUSTSEC-2026-0555", reason = "chrono-tz is unmaintained but has no known vulnerability and is used directly by the app; replacing it requires migrating to jiff" },
+  { id = "RUSTSEC-2026-0370", reason = "zvariant is pulled by zbus 5 through keyring and Tauri plugins, which have not moved to zbus 6 yet" },
+  { id = "RUSTSEC-2026-0371", reason = "zbus_names is pulled by zbus 5 through keyring and Tauri plugins, which have not moved to zbus 6 yet" },
+  { id = "RUSTSEC-2026-0372", reason = "zvariant_derive is pulled by zbus 5 through keyring and Tauri plugins, which have not moved to zbus 6 yet" },
 ]
 
 [bans]
