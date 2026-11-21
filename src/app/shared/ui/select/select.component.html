@@ -1,0 +1,47 @@
+<button
+  #trigger
+  type="button"
+  class="btn select-btn"
+  cdkOverlayOrigin
+  #origin="cdkOverlayOrigin"
+  aria-haspopup="listbox"
+  [attr.aria-expanded]="open()"
+  [attr.aria-label]="ariaLabel() || null"
+  [disabled]="disabled()"
+  (click)="toggle()"
+  (keydown)="onTriggerKeydown($event)"
+>
+  <span class="select-txt">{{ label() }}</span>
+  <app-icon name="chevron-down" class="ic chev" />
+</button>
+
+<ng-template
+  cdkConnectedOverlay
+  [cdkConnectedOverlayOrigin]="origin"
+  [cdkConnectedOverlayOpen]="open()"
+  [cdkConnectedOverlayPositions]="positions"
+  [cdkConnectedOverlayMinWidth]="trigger.offsetWidth"
+  cdkConnectedOverlayTransformOriginOn=".select-pop"
+  (overlayOutsideClick)="onOutsideClick($event)"
+  (overlayKeydown)="onKeydown($event)"
+  (detach)="close()"
+>
+  <div class="select-pop" animate.leave="pop-leave" role="listbox" [attr.aria-label]="ariaLabel() || null">
+    @for (option of options(); track option.value; let i = $index) {
+      <button
+        type="button"
+        role="option"
+        class="select-opt"
+        [class.active]="i === activeIndex()"
+        [attr.aria-selected]="i === selectedIndex()"
+        (mouseenter)="activeIndex.set(i)"
+        (click)="choose(option)"
+      >
+        <span>{{ option.label }}</span>
+        @if (i === selectedIndex()) {
+          <app-icon name="check" class="ic check" />
+        }
+      </button>
+    }
+  </div>
+</ng-template>

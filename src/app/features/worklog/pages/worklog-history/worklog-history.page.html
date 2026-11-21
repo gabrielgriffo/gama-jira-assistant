@@ -1,0 +1,194 @@
+<header class="page-head">
+  <div class="title-row">
+    <h1>Histórico de worklogs</h1>
+    <span class="sub">Worklogs registrados no Jira, por issue e por dia</span>
+  </div>
+  <div class="toolbar">
+    <gama-date-range-picker
+      [value]="range"
+      [timeZone]="timeZone"
+      [presets]="presets"
+      applyText="Aplicar e sincronizar"
+      (applied)="applyRange($event)"
+    />
+    <div class="spacer"></div>
+    <span class="synced" *ngIf="syncedLabel">{{ syncedLabel }}</span>
+    <button class="btn" (click)="syncWorklogs()" [disabled]="syncing">
+      <ng-container *ngIf="syncing"><span class="spin"></span>Sincronizando…</ng-container>
+      <ng-container *ngIf="!syncing">
+        <app-icon name="sync" class="ic" />
+        Sincronizar
+      </ng-container>
+    </button>
+  </div>
+</header>
+
+<div class="content">
+  <div *ngIf="loading" class="empty" style="padding: 60px 16px"><span class="spin"></span> Carregando…</div>
+
+  <div *ngIf="!loading && loadError && !response" class="empty err" role="alert">{{ loadError }}</div>
+
+  <ng-container *ngIf="!loading && response">
+    <div class="kpis">
+      <div class="card kpi">
+        <span class="label">Registrado</span>
+        <b>{{ hfmt(registeredMinutes) }}</b>
+        <span class="badge">{{ response.totalWorklogs }} worklogs</span>
+      </div>
+      <div class="card kpi">
+        <span class="label">Ponto</span>
+        <b>{{ pontoError ? "—" : hfmt(pontoMinutes) }}</b>
+        <span class="badge" [class.err]="pontoError">{{
+          pontoError ? "indisponível" : pontoDays + (pontoDays === 1 ? " dia" : " dias")
+        }}</span>
+      </div>
+      <div class="card kpi">
+        <span class="label">{{ differenceLabel }}</span>
+        <b>{{ pontoError ? "—" : hfmt(difference) }}</b>
+        <span class="badge err" *ngIf="pontoError">indisponível</span>
+        <span class="badge" *ngIf="!pontoError" [class.err]="pendingDays > 0" [class.ok]="pendingDays === 0">
+          <app-icon name="arrow-down-right" class="ic" *ngIf="pendingDays > 0" />
+          <app-icon name="arrow-up-right" class="ic" *ngIf="pendingDays === 0" />
+          {{ pendingDays > 0 ? "dias abaixo do ponto" : "em dia" }}
+        </span>
+      </div>
+      <div class="card kpi">
+        <span class="label">Dias pendentes</span>
+        <b>{{ pontoError ? "—" : pendingDays }}</b>
+        <span class="badge err" *ngIf="pontoError">indisponível</span>
+        <span class="badge" *ngIf="!pontoError" [class.warn]="pendingDays > 0" [class.ok]="pendingDays === 0">{{
+          pendingDays > 0 ? "a registrar" : "nenhum"
+        }}</span>
+      </div>
+    </div>
+
+    <section class="card">
+      <div class="card-head">
+        <h2>Worklogs do período</h2>
+        <div class="end">
+          <div class="seg" role="group" aria-label="Visualização">
+            <button (click)="viewMode = 'grid'" [attr.aria-pressed]="viewMode === 'grid'">Grade</button>
+            <button (click)="viewMode = 'day'" [attr.aria-pressed]="viewMode === 'day'">Por dia</button>
+          </div>
+        </div>
+      </div>
+
+      <ng-container *ngIf="viewMode === 'day'">
+        <div class="empty" *ngIf="!syncing && days.length === 0">Nenhum worklog ou marcação de ponto no período.</div>
+        <div class="hdays data-scroll" *ngIf="days.length > 0">
+          <section class="hday" *ngFor="let day of days; trackBy: trackDay">
+            <div class="hday-head">
+              <h3>{{ dayTitle(day.date) }}</h3>
+              <span class="badge dark" *ngIf="day.isToday">Hoje</span>
+              <div class="right">
+                <span class="badge err" *ngIf="day.zeroWorklogs > 0">{{ day.zeroWorklogs }} sem duração</span>
+                <ng-container *ngIf="day.pontoMinutes > 0">
+                  <span class="badge warn" *ngIf="day.pending"
+                    >{{ hfmt(day.pontoMinutes - day.registeredMinutes) }} abaixo do ponto</span
+                  >
+                  <span class="faint" *ngIf="!day.pending">Ponto: {{ hfmt(day.pontoMinutes) }}</span>
+                </ng-container>
+                <span class="tot">{{ hfmt(day.registeredMinutes) }}</span>
+              </div>
+            </div>
+            <div class="scroll-x" *ngIf="day.worklogs.length > 0">
+              <div class="hentries">
+                <ng-container *ngFor="let worklog of day.worklogs; trackBy: trackWorklog">
+                  <span class="muted">{{ timeRange(worklog) }}</span>
+                  <span
+                    ><button class="key" (click)="openIssue(worklog.issueBrowseUrl)">
+                      {{ worklog.issueKey }}
+                    </button></span
+                  >
+                  <span class="sum">{{ worklog.issueSummary }}</span>
+                  <span class="dur" [class.zero]="isZero(worklog)">{{ hfmt(worklog.timeSpentSeconds / 60) }}</span>
+                  <span class="cmt">
+                    <span *ngIf="!worklog.comment" class="faint">Sem comentário</span>
+                    <ng-container *ngIf="worklog.comment">{{ worklog.comment }}</ng-container>
+                  </span>
+                </ng-container>
+              </div>
+            </div>
+            <p class="none" *ngIf="day.worklogs.length === 0">Nenhum worklog registrado neste dia.</p>
+          </section>
+        </div>
+      </ng-container>
+
+      <ng-container *ngIf="viewMode === 'grid'">
+        <div class="empty" *ngIf="!syncing && gridRows.length === 0">Nenhum worklog registrado no período.</div>
+        <div class="data-scroll" *ngIf="gridRows.length > 0">
+          <table class="grid">
+            <thead>
+              <tr class="months">
+                <th class="first" rowspan="2">Issue</th>
+                <th class="total" rowspan="2">Total</th>
+                <th *ngFor="let month of gridMonths; trackBy: trackMonth" [attr.colspan]="month.span">
+                  <span>{{ month.label }}</span>
+                </th>
+              </tr>
+              <tr class="days-row">
+                <th
+                  *ngFor="let column of gridColumns; trackBy: trackColumn"
+                  [class]="column.className"
+                  [attr.aria-disabled]="column.weekend ? 'true' : null"
+                >
+                  <b>{{ dayNumber(column.date) }}</b
+                  >{{ weekdayShort(column.date) }}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let row of gridRows; trackBy: trackRow">
+                <th class="first">
+                  <button class="key" (click)="openIssue(row.issueBrowseUrl)">{{ row.issueKey }}</button
+                  ><span>{{ row.issueSummary }}</span>
+                </th>
+                <td class="total">{{ gfmt(row.totalMinutes) }}</td>
+                <ng-container *ngFor="let minutes of row.cells; let i = index; trackBy: trackIndex">
+                  <td
+                    *ngIf="minutes > 0 || row.zeroCells[i] > 0"
+                    class="v"
+                    [ngClass]="gridColumns[i].className"
+                    [class.zero]="row.zeroCells[i] > 0"
+                    [style.--a]="cellAlpha(minutes)"
+                  >
+                    <span>{{ gfmt(minutes) }}</span>
+                  </td>
+                  <td *ngIf="minutes === 0 && row.zeroCells[i] === 0" [ngClass]="gridColumns[i].className"></td>
+                </ng-container>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr>
+                <th class="first">Total registrado</th>
+                <td class="total">{{ gfmt(registeredMinutes) }}</td>
+                <td *ngFor="let column of gridColumns; trackBy: trackColumn" [ngClass]="column.className">
+                  {{ column.registered > 0 || !column.weekend ? gfmt(column.registered) : "" }}
+                </td>
+              </tr>
+              <tr>
+                <th class="first">Ponto</th>
+                <td class="total muted">{{ pontoError ? "—" : gfmt(pontoMinutes) }}</td>
+                <td *ngFor="let column of gridColumns; trackBy: trackColumn" class="muted" [ngClass]="column.className">
+                  {{ column.ponto > 0 ? gfmt(column.ponto) : column.weekend ? "" : "—" }}
+                </td>
+              </tr>
+              <tr>
+                <th class="first">{{ differenceLabel }}</th>
+                <td class="total" [class.miss]="pendingDays > 0">{{ pontoError ? "—" : signedGfmt(difference) }}</td>
+                <td
+                  *ngFor="let column of gridColumns; trackBy: trackColumn"
+                  [ngClass]="column.className"
+                  [class.miss]="column.missing"
+                  [class.faint]="!column.missing"
+                >
+                  {{ column.ponto > 0 ? signedGfmt(column.diff) : column.weekend ? "" : "—" }}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </ng-container>
+    </section>
+  </ng-container>
+</div>

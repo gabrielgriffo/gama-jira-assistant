@@ -1,0 +1,352 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.content {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.days-card {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.legend {
+  flex: none;
+  display: flex;
+  gap: 16px;
+  padding: 12px 16px 10px;
+  overflow: hidden;
+}
+.legend span {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.sw {
+  width: 18px;
+  height: 8px;
+  border-radius: 2px;
+}
+.sw.punch {
+  background: var(--punch);
+  height: 14px;
+  border-radius: 2px;
+}
+.sw.count {
+  background: var(--count);
+}
+.days {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 8px 8px 16px;
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
+}
+.days::before,
+.days::after {
+  content: "";
+  position: sticky;
+  z-index: 3;
+  flex: none;
+  display: block;
+  height: 40px;
+  margin-inline: -16px -8px;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+}
+.days::before {
+  top: 0;
+  margin-bottom: -48px;
+  background: linear-gradient(to top, transparent, var(--surface));
+  animation: more-above linear both;
+  animation-timeline: scroll();
+  animation-range: 0 48px;
+}
+.days::after {
+  bottom: -8px;
+  margin-top: -48px;
+  background: linear-gradient(to bottom, transparent, var(--surface));
+  animation: more-below linear both;
+  animation-timeline: scroll();
+  animation-range: calc(100% - 48px) 100%;
+}
+.to-top,
+.to-bottom {
+  position: sticky;
+  z-index: 4;
+  flex: none;
+  align-self: center;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--surface-3);
+  color: var(--ink);
+  opacity: 0;
+  visibility: hidden;
+  transition: background-color 0.12s;
+  animation-timeline: scroll();
+}
+.to-top {
+  top: 8px;
+  margin-bottom: -36px;
+  animation-name: more-above;
+  animation-timing-function: linear;
+  animation-fill-mode: both;
+  animation-range: 0 48px;
+}
+.to-bottom {
+  bottom: 0;
+  margin-top: -36px;
+  animation-name: more-below;
+  animation-timing-function: linear;
+  animation-fill-mode: both;
+  animation-range: calc(100% - 48px) 100%;
+}
+:is(.to-top, .to-bottom):hover {
+  background: var(--surface-3-hover);
+}
+:is(.to-top, .to-bottom) .ic {
+  width: 16px;
+  height: 16px;
+}
+@keyframes more-above {
+  from {
+    opacity: 0;
+    visibility: hidden;
+  }
+  to {
+    opacity: 1;
+    visibility: visible;
+  }
+}
+@keyframes more-below {
+  from {
+    opacity: 1;
+    visibility: visible;
+  }
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+.days::-webkit-scrollbar {
+  width: 8px;
+}
+.days::-webkit-scrollbar-thumb {
+  border-width: 2px;
+}
+.day {
+  flex: none;
+  padding: 0 14px 14px;
+  background: var(--surface-2);
+  border-radius: 8px;
+  box-shadow: var(--shadow-card);
+}
+.day-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 12px 0 10px;
+  border-bottom: 1px solid var(--line);
+}
+.day-title {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 18px;
+  line-height: 26px;
+  font-weight: 500;
+  letter-spacing: -0.015em;
+}
+.day-badges {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  gap: 4px;
+  overflow: hidden;
+}
+.day-badges .badge {
+  flex: 0 1 auto;
+}
+.day-actions {
+  flex: none;
+  margin-left: auto;
+}
+.day-empty {
+  margin-top: 12px;
+  color: var(--muted);
+}
+.day-sub {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  margin: 12px 0 10px;
+}
+.metrics {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+}
+.metric {
+  flex: none;
+  min-width: 0;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 0 12px;
+  border-left: 1px solid var(--line-2);
+  color: var(--muted);
+}
+.metric:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+.metric b {
+  flex: none;
+  font-weight: 600;
+  color: var(--ink);
+}
+.metric b.over {
+  color: var(--warn);
+}
+.metric.ponto {
+  flex: 0 1 auto;
+}
+.metric .iv {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 13px;
+  color: var(--faint);
+}
+.tl {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.tl-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 22%) minmax(0, 1fr) 72px 76px;
+  align-items: center;
+  column-gap: 10px;
+  min-height: 48px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: var(--surface);
+}
+.tl-row.axis-row {
+  min-height: 16px;
+  padding-top: 0;
+  padding-bottom: 0;
+  background: none;
+}
+.axis {
+  position: relative;
+  height: 16px;
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--faint);
+}
+.axis span {
+  position: absolute;
+  transform: translateX(-50%);
+}
+.track {
+  position: relative;
+  height: 24px;
+}
+.track::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  margin-top: -0.5px;
+  background: var(--line-2);
+}
+.track .gl {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  width: 1px;
+  background: var(--line);
+}
+.track .pb {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  border-radius: 2px;
+  background: var(--punch);
+}
+.track .s {
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  border-radius: 2px;
+}
+.track .s.count {
+  background: var(--count);
+}
+.tl-label {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.tl-label .key {
+  align-self: flex-start;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tl-label span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--muted);
+}
+.tl-time {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  white-space: nowrap;
+}
+.tl-time b {
+  font-weight: 600;
+}
+.tl-time b small {
+  margin-left: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--warn);
+}
+.tl-time span {
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--muted);
+}
+.tl-act {
+  text-align: right;
+}

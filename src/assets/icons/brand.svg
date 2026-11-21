@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="70 140 372 262" stroke-width="20" stroke-linejoin="round">
+  <defs>
+    <clipPath id="brand-meet"><polygon points="63.5,402 206,128.3 348.5,402" /></clipPath>
+  </defs>
+  <polygon style="fill: var(--logo-left, #2b2724); stroke: var(--logo-left, #2b2724)" points="80,392 206,150 332,392" />
+  <polygon style="fill: #ff5a36; stroke: #ff5a36" points="180,392 306,150 432,392" />
+  <polygon
+    style="fill: var(--logo-meet, #9e2f17); stroke: var(--logo-meet, #9e2f17)"
+    clip-path="url(#brand-meet)"
+    points="180,392 306,150 432,392"
+  />
+</svg>

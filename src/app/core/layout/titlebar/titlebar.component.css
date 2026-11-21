@@ -1,0 +1,95 @@
+:host {
+  position: relative;
+  z-index: 100;
+  display: flex;
+  flex: none;
+  height: var(--titlebar-height);
+  background: var(--canvas);
+  border-bottom: 1px solid var(--line);
+  -webkit-user-select: none;
+  user-select: none;
+}
+.drag {
+  display: flex;
+  align-items: center;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding-left: 20px;
+}
+:host(.mac) .drag {
+  padding-left: 80px;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none;
+}
+.brand-mark {
+  flex: none;
+  width: 23px;
+  height: 16px;
+  overflow: visible;
+}
+.brand-name {
+  font-family: var(--font-brand);
+  font-size: 22px;
+  line-height: 16px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+}
+.actions {
+  display: flex;
+  align-items: center;
+  flex: none;
+  padding: 0 4px;
+}
+.actions .icon-btn .ic {
+  width: 16px;
+  height: 16px;
+}
+.actions .icon-btn:focus-visible {
+  outline: none;
+}
+.controls {
+  display: flex;
+  flex: none;
+}
+.ctl {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
+  transition: background-color 0.1s;
+}
+.ctl app-icon {
+  width: 10px;
+  height: 10px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1;
+  shape-rendering: geometricPrecision;
+}
+.ctl:hover {
+  background: var(--hover-soft);
+}
+.ctl:active {
+  background: color-mix(in srgb, var(--ink) 9%, transparent);
+}
+.ctl.close:hover {
+  background: #c42b1c;
+  color: #ffffff;
+}
+.ctl.close:active {
+  background: #c83f31;
+  color: #ffffff;
+}
+.ctl:focus-visible {
+  outline-offset: -2px;
+}

@@ -1,0 +1,36 @@
+<button
+  #trigger
+  type="button"
+  class="btn range-btn"
+  cdkOverlayOrigin
+  #origin="cdkOverlayOrigin"
+  aria-haspopup="dialog"
+  [attr.aria-expanded]="open()"
+  (click)="toggle()"
+>
+  <app-icon name="calendar" class="ic" />
+  <span class="range-txt">{{ label() }}</span>
+  <app-icon name="chevron-down" class="ic chev" />
+</button>
+
+<ng-template
+  cdkConnectedOverlay
+  [cdkConnectedOverlayOrigin]="origin"
+  [cdkConnectedOverlayOpen]="open()"
+  [cdkConnectedOverlayPositions]="positions"
+  cdkConnectedOverlayTransformOriginOn=".range-pop"
+  (overlayOutsideClick)="onOutsideClick($event)"
+  (overlayKeydown)="onKeydown($event)"
+  (detach)="close()"
+>
+  <gama-date-range-panel
+    animate.leave="pop-leave"
+    [value]="value()"
+    [today]="today()"
+    [presets]="presets()"
+    [minMonth]="minMonth()"
+    [applyText]="applyText()"
+    (apply)="onApply($event)"
+    (cancel)="close()"
+  />
+</ng-template>

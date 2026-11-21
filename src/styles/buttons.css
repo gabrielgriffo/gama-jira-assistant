@@ -1,0 +1,106 @@
+.btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--surface-3);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.btn:hover:not(:disabled) {
+  background: var(--surface-3-hover);
+}
+.btn.primary {
+  background: var(--primary);
+  color: var(--on-primary);
+}
+.btn.primary:hover:not(:disabled) {
+  background: var(--primary-2);
+}
+.btn.launch {
+  background: var(--launch);
+  color: var(--on-launch);
+}
+.btn.launch:hover:not(:disabled) {
+  background: var(--launch-2);
+}
+.btn.quiet {
+  background: transparent;
+  color: var(--muted);
+}
+.btn.quiet:hover:not(:disabled) {
+  background: var(--hover-soft);
+  color: var(--ink);
+}
+.btn.small {
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  gap: 4px;
+}
+.btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.icon-btn {
+  flex-shrink: 0;
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--muted);
+}
+.icon-btn:hover:not(:disabled) {
+  background: var(--hover-soft);
+  color: var(--ink);
+}
+.icon-btn.plain {
+  width: 24px;
+  height: 24px;
+}
+.icon-btn.lg {
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+}
+.icon-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.seg {
+  flex-shrink: 0;
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 6px;
+  background: var(--surface-3);
+}
+.seg button {
+  height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 13px;
+}
+.seg button:hover {
+  color: var(--ink);
+}
+.seg button[aria-pressed="true"] {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow-thumb);
+}

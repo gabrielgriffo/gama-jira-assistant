@@ -1,0 +1,33 @@
+<div class="drag" data-tauri-drag-region>
+  <div class="brand">
+    <app-icon name="brand" class="brand-mark" />
+    <span class="brand-name">Gama</span>
+  </div>
+</div>
+<div class="actions">
+  <button type="button" class="icon-btn lg" (click)="openSettings()" aria-label="Configurações">
+    <app-icon name="gear" class="ic" />
+  </button>
+</div>
+@if (!isMac) {
+  <div class="controls">
+    <button type="button" class="ctl" (click)="minimize()" aria-label="Minimizar">
+      <app-icon name="window-minimize" />
+    </button>
+    <button
+      type="button"
+      class="ctl"
+      (click)="toggleMaximize()"
+      [attr.aria-label]="maximized() ? 'Restaurar' : 'Maximizar'"
+    >
+      @if (maximized()) {
+        <app-icon name="window-restore" />
+      } @else {
+        <app-icon name="window-maximize" />
+      }
+    </button>
+    <button type="button" class="ctl close" (click)="close()" aria-label="Fechar">
+      <app-icon name="window-close" />
+    </button>
+  </div>
+}

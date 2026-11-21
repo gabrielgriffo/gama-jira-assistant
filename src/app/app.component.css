@@ -1,0 +1,115 @@
+.app {
+  display: flex;
+  flex: 1 1 auto;
+  gap: 8px;
+  min-height: 0;
+  padding-right: 8px;
+}
+.side {
+  flex: 0 0 200px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 8px;
+  overflow-y: auto;
+  background: var(--sidebar);
+}
+.nav-label {
+  padding: 10px 10px 4px;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 400;
+  color: var(--faint);
+}
+.nav-label:first-child {
+  padding-top: 0;
+}
+.nav-label:not(:first-child) {
+  margin-top: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line-2);
+}
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.nav button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  height: 32px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 500;
+  text-align: left;
+  white-space: nowrap;
+}
+.nav button .ic {
+  width: 16px;
+  height: 16px;
+}
+.nav button:hover {
+  background: var(--hover-soft);
+  color: var(--ink);
+}
+.nav button[aria-current="page"] {
+  background: var(--inverse);
+  color: var(--on-inverse);
+}
+.side-foot {
+  margin-top: auto;
+  padding-top: 6px;
+  border-top: 1px solid var(--line-2);
+}
+.who {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  padding: 4px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  text-align: left;
+}
+.who:hover {
+  background: var(--hover-soft);
+}
+.who b {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-weight: 500;
+}
+.who span {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--muted);
+}
+main {
+  flex: 1 1 auto;
+  padding: 8px 0;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  min-width: 0;
+}
+.main-inner {
+  max-width: 1700px;
+  height: 100%;
+  margin-inline: auto;
+}
+.nav button > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

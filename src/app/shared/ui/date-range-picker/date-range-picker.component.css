@@ -1,0 +1,26 @@
+:host {
+  display: block;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.range-btn {
+  max-width: 100%;
+  flex-shrink: 1;
+  min-width: 0;
+  gap: 6px;
+  padding: 0 10px;
+}
+.range-btn[aria-expanded="true"] {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.range-txt {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.chev {
+  color: var(--muted);
+}

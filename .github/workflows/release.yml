@@ -1,0 +1,260 @@
+name: "publish"
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+        with:
+          workspaces: "./src-tauri -> target"
+
+      # gnome-keyring + dbus: os testes de credenciais usam o cofre do sistema
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y             libwebkit2gtk-4.1-dev             libgtk-3-dev             libappindicator3-dev             librsvg2-dev             libdbus-1-dev             pkg-config             gnome-keyring             dbus-x11
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Frontend tests
+        run: npm test
+
+      - name: Backend tests
+        working-directory: src-tauri
+        run: |
+          export XDG_DATA_HOME="$(mktemp -d)"
+          dbus-run-session -- bash -c 'echo "" | gnome-keyring-daemon --unlock --components=secrets > /dev/null && cargo test --lib'
+
+  create-release:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      release-id: ${{ steps.create.outputs.id }}
+    steps:
+      - name: Validate tag
+        shell: bash
+        run: |
+          if [[ ! "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "A tag $GITHUB_REF_NAME não segue o formato vX.Y.Z"
+            exit 1
+          fi
+
+      - name: Create draft release
+        id: create
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ID=$(gh api "repos/$GITHUB_REPOSITORY/releases" --paginate \
+            --jq '.[] | select(.draft and .tag_name == env.GITHUB_REF_NAME) | .id' | head -n 1)
+          if [ -z "$ID" ]; then
+            ID=$(gh api "repos/$GITHUB_REPOSITORY/releases" \
+              -f tag_name="$GITHUB_REF_NAME" \
+              -f name="$GITHUB_REF_NAME" \
+              -F draft=true \
+              -F prerelease=false \
+              --jq .id)
+          else
+            echo "Reaproveitando o rascunho $ID da tag $GITHUB_REF_NAME"
+          fi
+          echo "id=$ID" >> "$GITHUB_OUTPUT"
+
+  publish-tauri:
+    needs: create-release
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [windows-latest, ubuntu-22.04]
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
+
+      - name: Get version
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Versão inválida: $VERSION"
+            exit 1
+          fi
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "Building version: $VERSION"
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+        with:
+          workspaces: "./src-tauri -> target"
+
+      # libdbus-1-dev: keyring (Secret Service); patchelf: AppImage
+      - name: Install Linux dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libgtk-3-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            libdbus-1-dev \
+            pkg-config \
+            patchelf
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Set application version
+        shell: bash
+        run: |
+          node <<'EOF'
+          const fs = require("fs");
+
+          const version = process.env.VERSION;
+          if (!version) {
+            throw new Error("VERSION environment variable is missing");
+          }
+
+          console.log(`Setting application version to ${version}`);
+
+          const packagePath = "package.json";
+          const packageJson = JSON.parse(fs.readFileSync(packagePath, "utf8"));
+          packageJson.version = version;
+          fs.writeFileSync(packagePath, JSON.stringify(packageJson, null, 2) + "\n");
+
+          if (fs.existsSync("package-lock.json")) {
+            const lockPath = "package-lock.json";
+            const lockJson = JSON.parse(fs.readFileSync(lockPath, "utf8"));
+            lockJson.version = version;
+            if (lockJson.packages && lockJson.packages[""]) {
+              lockJson.packages[""].version = version;
+            }
+            fs.writeFileSync(lockPath, JSON.stringify(lockJson, null, 2) + "\n");
+          }
+
+          const cargoPath = "src-tauri/Cargo.toml";
+          let cargoToml = fs.readFileSync(cargoPath, "utf8");
+          const packageSection = cargoToml.match(/\[package\]([\s\S]*?)(?=\n\[|$)/);
+          if (!packageSection) {
+            throw new Error("Could not find [package] section in Cargo.toml");
+          }
+          const updatedPackageSection = packageSection[0].replace(
+            /^version\s*=\s*"[^"]+"/m,
+            `version = "${version}"`
+          );
+          if (updatedPackageSection === packageSection[0]) {
+            throw new Error("Could not find version inside [package] in Cargo.toml");
+          }
+          cargoToml = cargoToml.replace(packageSection[0], updatedPackageSection);
+          fs.writeFileSync(cargoPath, cargoToml);
+
+          const tauriConfigPath = "src-tauri/tauri.conf.json";
+          const tauriConfig = JSON.parse(fs.readFileSync(tauriConfigPath, "utf8"));
+          tauriConfig.version = version;
+          fs.writeFileSync(tauriConfigPath, JSON.stringify(tauriConfig, null, 2) + "\n");
+
+          console.log("Version synchronized successfully.");
+          EOF
+
+      - name: Verify versions
+        shell: bash
+        run: |
+          echo "Expected version: $VERSION"
+
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          TAURI_VERSION=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          CARGO_VERSION=$(grep -A20 '^\[package\]' src-tauri/Cargo.toml | grep '^version' | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
+
+          echo "package.json:       $PACKAGE_VERSION"
+          echo "Cargo.toml:         $CARGO_VERSION"
+          echo "tauri.conf.json:    $TAURI_VERSION"
+
+          if [ "$PACKAGE_VERSION" != "$VERSION" ]; then
+            echo "package.json version mismatch!"
+            exit 1
+          fi
+
+          if [ "$CARGO_VERSION" != "$VERSION" ]; then
+            echo "Cargo.toml version mismatch!"
+            exit 1
+          fi
+
+          if [ "$TAURI_VERSION" != "$VERSION" ]; then
+            echo "tauri.conf.json version mismatch!"
+            exit 1
+          fi
+
+          echo "All versions match."
+
+      - name: Build and release
+        uses: tauri-apps/tauri-action@1deb371b0cd8bd54025b384f1cd735e725c4060f # v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          releaseId: ${{ needs.create-release.outputs.release-id }}
+
+  publish-release:
+    needs: publish-tauri
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
+
+      - name: Build downloads table
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash scripts/release-downloads.sh "$GITHUB_REF_NAME"
+
+      - name: Publish draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: gh release edit "$GITHUB_REF_NAME" --draft=false --latest

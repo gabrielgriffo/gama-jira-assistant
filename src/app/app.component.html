@@ -1,0 +1,35 @@
+<app-titlebar></app-titlebar>
+<div class="app">
+  <aside class="side" aria-label="Navegação">
+    <nav class="nav">
+      <div class="nav-label">Trabalho</div>
+      <button routerLink="/tasks" routerLinkActive="active" ariaCurrentWhenActive="page">
+        <app-icon name="list" class="ic" />
+        <span>Tarefas</span>
+      </button>
+      <button routerLink="/worklog" routerLinkActive="active" ariaCurrentWhenActive="page">
+        <app-icon name="clock" class="ic" />
+        <span>Gerar worklogs</span>
+      </button>
+      <button routerLink="/worklog-history" routerLinkActive="active" ariaCurrentWhenActive="page">
+        <app-icon name="calendar" class="ic" />
+        <span>Histórico de worklogs</span>
+      </button>
+    </nav>
+    <div class="side-foot">
+      <button type="button" class="who" (click)="settingsDialog.show('account')">
+        <b>{{ userName() }}</b>
+        <span>{{ jiraInstance() }}</span>
+      </button>
+    </div>
+  </aside>
+  <main id="main">
+    <div class="main-inner">
+      <router-outlet></router-outlet>
+    </div>
+  </main>
+</div>
+@if (settingsDialog.open()) {
+  <app-settings-dialog animate.leave="modal-leave" (close)="settingsDialog.hide()" />
+}
+<app-toast />

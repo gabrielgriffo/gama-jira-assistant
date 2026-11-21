@@ -1,0 +1,131 @@
+<header class="page-head">
+  <div class="title-row">
+    <h1>Tarefas</h1>
+    <span class="sub"
+      >{{ tasks.length }}
+      {{ tasks.length === 1 ? "tarefa atribuída a você e atualizada" : "tarefas atribuídas a você e atualizadas" }} no
+      período</span
+    >
+  </div>
+  <div class="toolbar">
+    <gama-date-range-picker
+      [value]="range"
+      [timeZone]="timeZone"
+      applyText="Aplicar e sincronizar"
+      (applied)="applyRange($event)"
+    />
+    <div class="spacer"></div>
+    <button class="btn" (click)="loadTasks(true)" [disabled]="syncing">
+      <ng-container *ngIf="syncing"><span class="spin"></span>Sincronizando…</ng-container>
+      <ng-container *ngIf="!syncing">
+        <app-icon name="sync" class="ic" />
+        Sincronizar
+      </ng-container>
+    </button>
+  </div>
+</header>
+
+<div class="content">
+  <section class="card">
+    <div class="tabs" role="tablist" aria-label="Categoria do status">
+      <button
+        role="tab"
+        *ngFor="let tab of tabs; trackBy: trackTab"
+        [attr.aria-selected]="tab.id === activeTab"
+        (click)="activeTab = tab.id"
+      >
+        {{ tab.label }}<span class="n">{{ tab.count }}</span>
+      </button>
+    </div>
+
+    <div class="filters">
+      <label class="search">
+        <app-icon name="search" class="ic" />
+        <input
+          autocomplete="off"
+          type="search"
+          name="taskQuery"
+          placeholder="Buscar por chave ou título"
+          aria-label="Buscar tarefas"
+          [(ngModel)]="query"
+        />
+      </label>
+      <label class="switch-field">
+        <input type="checkbox" role="switch" class="switch" name="developmentFirst" [(ngModel)]="developmentFirst" />
+        Priorizar tarefas em desenvolvimento
+      </label>
+      <span class="result"
+        >Exibindo {{ visibleTasks.length }} {{ visibleTasks.length === 1 ? "tarefa" : "tarefas" }}</span
+      >
+    </div>
+
+    <div class="table-scroll" #tableScroll>
+      <button type="button" class="to-top" (click)="scrollToTop(tableScroll)" aria-label="Voltar ao topo da lista">
+        <app-icon name="chevron-up" class="ic" />
+      </button>
+      <table class="list">
+        <colgroup>
+          <col style="width: 132px" />
+          <col />
+          <col style="width: 200px" />
+          <col style="width: 140px" />
+          <col style="width: 60px" />
+        </colgroup>
+        <thead>
+          <tr>
+            <th>Chave</th>
+            <th>Issue</th>
+            <th>Status</th>
+            <th>Atualização</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let task of visibleTasks; trackBy: trackTask">
+            <td class="key-cell">
+              <button class="key" (click)="openTask(task, $event)">{{ task.key }}</button>
+            </td>
+            <td class="issue">
+              <span class="issue-title">{{ task.summary }}</span>
+              <span class="issue-meta" *ngIf="metaLabel(task) as meta">{{ meta }}</span>
+            </td>
+            <td>
+              <span class="badge" [ngClass]="statusBadge(task)">{{ task.statusName }}</span>
+            </td>
+            <td class="muted">{{ updatedLabel(task) }}</td>
+            <td class="actions">
+              <button
+                class="icon-btn"
+                (click)="viewStatusHistory(task, $event)"
+                [attr.aria-label]="'Ver histórico de ' + task.key"
+              >
+                <app-icon name="history" class="ic" />
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <button type="button" class="to-bottom" (click)="scrollToBottom(tableScroll)" aria-label="Ir para o fim da lista">
+        <app-icon name="chevron-down" class="ic" />
+      </button>
+
+      <div class="empty" *ngIf="!loading && !errorMessage && !visibleTasks.length">
+        Nenhuma tarefa corresponde aos filtros selecionados.
+      </div>
+      <div class="empty err" role="alert" *ngIf="!loading && errorMessage">{{ errorMessage }}</div>
+    </div>
+  </section>
+</div>
+
+<app-status-history-modal
+  [isOpen]="isModalOpen"
+  [taskKey]="selectedTaskKey"
+  [statusHistory]="statusHistory"
+  [loading]="loadingStatusHistory"
+  [syncing]="syncingStatusHistory"
+  [earliestDate]="earliestDate"
+  [latestDate]="latestDate"
+  [error]="historyError"
+  (close)="closeModal()"
+  (sync)="syncStatusHistory()"
+></app-status-history-modal>

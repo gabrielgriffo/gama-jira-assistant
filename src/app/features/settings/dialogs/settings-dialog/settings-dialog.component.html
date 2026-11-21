@@ -1,0 +1,37 @@
+<div class="overlay" (click)="onBackdropClick($event)">
+  <div
+    class="dialog settings-dlg"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="settings-dlg-title"
+    cdkTrapFocus
+    [cdkTrapFocusAutoCapture]="true"
+  >
+    <div class="dialog-head">
+      <div>
+        <h2 id="settings-dlg-title">Configurações</h2>
+      </div>
+      <button type="button" class="icon-btn lg" (click)="close.emit()" aria-label="Fechar">
+        <app-icon name="close" class="ic" />
+      </button>
+    </div>
+    <div class="settings-layout">
+      <nav class="settings-nav" aria-label="Seções das configurações">
+        @for (item of sections; track item.id) {
+          <button
+            type="button"
+            [attr.aria-current]="section() === item.id ? 'page' : null"
+            (click)="section.set(item.id)"
+          >
+            {{ item.label }}
+          </button>
+        }
+      </nav>
+      <div class="settings-main">
+        <div class="dialog-body scroll-fade" tabindex="-1" cdkFocusInitial>
+          <app-settings [section]="section()" />
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,16 @@
+[advisories]
+version = 2
+yanked = "deny"
+ignore = [
+  { id = "RUSTSEC-2024-0370", reason = "proc-macro-error is a transitive build-time dependency of the Tauri GTK stack on Linux" },
+  { id = "RUSTSEC-2024-0429", reason = "glib 0.18 is pulled by the Tauri GTK stack on Linux; the affected iterator is not used by the app" },
+]
+
+[bans]
+multiple-versions = "allow"
+wildcards = "deny"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
