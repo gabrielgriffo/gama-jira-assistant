@@ -18,7 +18,7 @@ RPM="${APP}-${VERSION}-1.x86_64.rpm"
 APPIMAGE="${APP}_${VERSION}_amd64.AppImage"
 
 missing=0
-for file in "$EXE" "$MSI" "$DEB" "$RPM" "$APPIMAGE"; do
+for file in "$EXE" "$MSI" "$DEB" "$RPM" "$APPIMAGE" latest.json; do
   if ! grep -qxF "$file" <<<"$ASSETS"; then
     echo "Artefato ausente na release: $file" >&2
     missing=1
@@ -27,6 +27,18 @@ done
 if [ "$missing" = 1 ]; then
   exit 1
 fi
+
+manifest="$(gh release download "$TAG" -R "$REPO" -p latest.json -O -)"
+if ! jq -e --arg v "$VERSION" '.version == $v or .version == ("v" + $v)' <<<"$manifest" >/dev/null; then
+  echo "latest.json não corresponde à versão $VERSION" >&2
+  exit 1
+fi
+for platform in windows-x86_64 linux-x86_64; do
+  if ! jq -e --arg p "$platform" '(.platforms[$p].url // "") != "" and (.platforms[$p].signature // "") != ""' <<<"$manifest" >/dev/null; then
+    echo "latest.json sem URL ou assinatura para $platform" >&2
+    exit 1
+  fi
+done
 
 link() {
   printf '[%s](%s/%s)' "$1" "$BASE" "$2"
