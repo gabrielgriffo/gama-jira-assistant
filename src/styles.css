@@ -493,6 +493,9 @@ gama-date-range-panel.pop-leave {
   margin: 12px -12px -4px -4px;
   padding: 4px 12px 4px 4px;
 }
+.scroll-fade {
+  container-type: scroll-state;
+}
 .scroll-fade::before,
 .scroll-fade::after {
   content: "";
@@ -520,6 +523,12 @@ gama-date-range-panel.pop-leave {
   animation: fade-more-below linear both;
   animation-timeline: scroll();
   animation-range: calc(100% - 40px) 100%;
+}
+@container not scroll-state(scrollable: block) {
+  .scroll-fade::before,
+  .scroll-fade::after {
+    animation: none;
+  }
 }
 @keyframes fade-more-above {
   from {
