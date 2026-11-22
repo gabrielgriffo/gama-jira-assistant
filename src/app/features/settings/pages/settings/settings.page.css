@@ -257,3 +257,19 @@ input[type="checkbox"].cb:checked {
     transition: none;
   }
 }
+.row-value {
+  color: var(--muted);
+}
+.about-mark {
+  width: 40px;
+  height: 40px;
+}
+.about-name {
+  font-family: var(--font-brand);
+  font-size: 16px;
+}
+.about-desc {
+  padding: 10px 14px 14px;
+  font-size: 12px;
+  color: var(--muted);
+}

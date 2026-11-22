@@ -20,6 +20,7 @@ export class SettingsDialogComponent {
   protected readonly sections: { id: SettingsSection; label: string }[] = [
     { id: "general", label: "Geral" },
     { id: "account", label: "Conta" },
+    { id: "about", label: "Sobre" },
   ];
   protected readonly section = signal<SettingsSection>(inject(SettingsDialogService).section());
 

@@ -14,7 +14,8 @@ import { A11yModule } from "@angular/cdk/a11y";
 import { error } from "@tauri-apps/plugin-log";
 import { JiraStateService } from "../../../../core/auth/jira-state.service";
 import { PontoMaisStateService } from "../../../../core/pontomais/pontomais-state.service";
-import { JiraStatus, preferencesCommands, statusCommands } from "../../../../core/tauri";
+import { AppPage, JiraStatus, linkCommands, preferencesCommands, statusCommands } from "../../../../core/tauri";
+import { getTauriVersion } from "@tauri-apps/api/app";
 import { ToastService } from "../../../../core/feedback/toast.service";
 import { SelectComponent, SelectOption } from "../../../../shared/ui/select/select.component";
 import { AppSettingsService } from "../../../../core/preferences/app-settings.service";
@@ -52,7 +53,11 @@ interface StatusColumn {
   fillers: number[];
 }
 
-export type SettingsSection = "general" | "account";
+export type SettingsSection = "general" | "account" | "about";
+
+const APP_DESCRIPTION =
+  "Assistente desktop para o Jira Cloud que calcula o tempo trabalhado em cada tarefa a partir das marcações de ponto do PontoMais.";
+const APP_AUTHOR = "Gabriel Griffo";
 
 @Component({
   selector: "app-settings",
@@ -74,6 +79,10 @@ export class SettingsPage implements OnInit {
   private statusCatalog = inject(StatusCatalogStore);
   private localData = inject(LocalDataService);
   readonly update = inject(UpdateService);
+
+  readonly appDescription = APP_DESCRIPTION;
+  readonly appAuthor = APP_AUTHOR;
+  readonly tauriVersion = signal("");
 
   readonly theme = signal<Theme>("light");
 
@@ -124,6 +133,9 @@ export class SettingsPage implements OnInit {
   }
 
   ngOnInit(): void {
+    getTauriVersion()
+      .then((version) => this.tauriVersion.set(version))
+      .catch((err) => error(`failed to read Tauri version: ${err}`));
     this.loadTheme();
     this.applyStatuses(false);
   }
@@ -141,6 +153,13 @@ export class SettingsPage implements OnInit {
     } finally {
       this.syncIntervalSaving.set(false);
     }
+  }
+
+  openAppPage(page: AppPage): void {
+    linkCommands.openAppPage(page).catch((err) => {
+      error(`failed to open ${page} page: ${err}`);
+      this.toastService.error("Não foi possível abrir o navegador.");
+    });
   }
 
   loadTheme(): void {

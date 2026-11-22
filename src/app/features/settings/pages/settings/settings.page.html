@@ -272,6 +272,71 @@
       </div>
     </section>
   }
+  @if (section() === "about") {
+    <section class="set-section">
+      <div class="group">
+        <div class="row">
+          <app-icon name="brand" class="about-mark" />
+          <div class="row-text">
+            <b class="about-name">Gama</b>
+            <span>Versão {{ update.currentVersion() }}</span>
+          </div>
+        </div>
+        <p class="about-desc">{{ appDescription }}</p>
+      </div>
+    </section>
+    <section class="set-section">
+      <div class="set-title">
+        <h2>Informações</h2>
+      </div>
+      <div class="group">
+        <div class="row">
+          <div class="row-text"><b>Versão</b></div>
+          <span class="row-value">{{ update.currentVersion() }}</span>
+        </div>
+        <div class="row">
+          <div class="row-text"><b>Tauri</b></div>
+          <span class="row-value">{{ tauriVersion() }}</span>
+        </div>
+        <div class="row">
+          <div class="row-text"><b>Desenvolvido por</b></div>
+          <span class="row-value">{{ appAuthor }}</span>
+        </div>
+      </div>
+    </section>
+    <section class="set-section">
+      <div class="set-title">
+        <h2>Privacidade</h2>
+      </div>
+      <div class="group">
+        <p class="about-desc">
+          Os dados ficam em um banco local neste computador. As senhas e os tokens são guardados no cofre do sistema, e
+          as requisições saem da sua máquina direto para o Jira e o PontoMais, sem servidores intermediários.
+        </p>
+      </div>
+    </section>
+    <section class="set-section">
+      <div class="set-title">
+        <h2>Links</h2>
+      </div>
+      <div class="group">
+        <div class="row">
+          <div class="row-text">
+            <b>Código-fonte</b>
+            <span>Repositório do Gama no GitHub</span>
+          </div>
+          <button type="button" class="btn" (click)="openAppPage('repository')">Abrir</button>
+        </div>
+        <div class="row">
+          <div class="row-text">
+            <b>Notas de versão</b>
+            <span>Novidades e downloads de cada versão</span>
+          </div>
+          <button type="button" class="btn" (click)="openAppPage('releases')">Abrir</button>
+        </div>
+      </div>
+    </section>
+  }
 </div>
 
 @if (!jiraState().connected && showLoginForm()) {

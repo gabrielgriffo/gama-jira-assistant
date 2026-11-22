@@ -109,6 +109,10 @@ export const windowCommands = {
   showMain: () => invoke<void>("show_main_window"),
 };
 
+export type AppPage = "repository" | "releases";
+
 export const linkCommands = {
   openJiraUrl: (url: string) => invoke<void>("open_jira_url", { url }),
+
+  openAppPage: (page: AppPage) => invoke<void>("open_app_page", { page }),
 };

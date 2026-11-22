@@ -12,7 +12,7 @@ use presentation::commands::jira::{
     sync_jira_status_catalog, update_jira_statuses_is_development,
 };
 use presentation::commands::jira_worklog::{get_jira_worklogs_for_period, sync_jira_worklogs, sync_worklog_period};
-use presentation::commands::opener::open_jira_url;
+use presentation::commands::opener::{open_app_page, open_jira_url};
 use presentation::commands::pontomais::{
     get_pontomais_timeline, pontomais_connect, pontomais_disconnect, pontomais_status, sync_pontomais_entries,
 };
@@ -63,6 +63,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             show_main_window,
             open_jira_url,
+            open_app_page,
             login,
             logout,
             get_connection_status,
