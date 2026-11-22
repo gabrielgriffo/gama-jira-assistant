@@ -3,7 +3,7 @@
   padding: 0;
 }
 .settings-dlg > .dialog-head {
-  padding: 16px 20px 12px;
+  padding: 14px 20px;
 }
 .settings-layout {
   flex: 1 1 auto;
@@ -23,6 +23,7 @@
 .settings-nav button {
   display: flex;
   align-items: center;
+  gap: 8px;
   height: 32px;
   padding: 0 10px;
   border: 0;
@@ -32,6 +33,10 @@
   font-size: 13px;
   font-weight: 500;
   text-align: left;
+}
+.settings-nav button .ic {
+  width: 16px;
+  height: 16px;
 }
 .settings-nav button:hover {
   background: var(--hover-soft);

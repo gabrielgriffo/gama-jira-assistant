@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, inject, output, signal, viewChild }
 import { A11yModule } from "@angular/cdk/a11y";
 import { SettingsPage, SettingsSection } from "../../pages/settings/settings.page";
 import { IconComponent } from "../../../../shared/ui/icon/icon.component";
+import { IconName } from "../../../../shared/ui/icon/icons";
 import { SettingsDialogService } from "../../settings-dialog.service";
 
 @Component({
@@ -17,10 +18,10 @@ import { SettingsDialogService } from "../../settings-dialog.service";
 export class SettingsDialogComponent {
   readonly close = output<void>();
 
-  protected readonly sections: { id: SettingsSection; label: string }[] = [
-    { id: "general", label: "Geral" },
-    { id: "account", label: "Conta" },
-    { id: "about", label: "Sobre" },
+  protected readonly sections: { id: SettingsSection; label: string; icon: IconName }[] = [
+    { id: "general", label: "Geral", icon: "sliders" },
+    { id: "account", label: "Conta", icon: "user" },
+    { id: "about", label: "Sobre", icon: "info" },
   ];
   protected readonly section = signal<SettingsSection>(inject(SettingsDialogService).section());
 

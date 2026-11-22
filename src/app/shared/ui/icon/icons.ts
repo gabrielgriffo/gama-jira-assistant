@@ -10,10 +10,13 @@ import close from "../../../../assets/icons/close.svg";
 import download from "../../../../assets/icons/download.svg";
 import gear from "../../../../assets/icons/gear.svg";
 import history from "../../../../assets/icons/history.svg";
+import info from "../../../../assets/icons/info.svg";
 import list from "../../../../assets/icons/list.svg";
 import search from "../../../../assets/icons/search.svg";
 import send from "../../../../assets/icons/send.svg";
+import sliders from "../../../../assets/icons/sliders.svg";
 import sync from "../../../../assets/icons/sync.svg";
+import user from "../../../../assets/icons/user.svg";
 import windowClose from "../../../../assets/icons/window-close.svg";
 import windowMaximize from "../../../../assets/icons/window-maximize.svg";
 import windowMinimize from "../../../../assets/icons/window-minimize.svg";
@@ -31,10 +34,13 @@ export const ICONS = {
   download: download,
   gear: gear,
   history: history,
+  info: info,
   list: list,
   search: search,
   send: send,
+  sliders: sliders,
   sync: sync,
+  user: user,
   "window-close": windowClose,
   "window-maximize": windowMaximize,
   "window-minimize": windowMinimize,

@@ -43,17 +43,20 @@
   --cat-done: #2fb37a;
   --punch: #e7e4e2;
   --count: #ffb59c;
-  --shadow-card: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 0 0 1px rgba(43, 39, 36, 0.04), 0 1px 2px rgba(43, 39, 36, 0.04), 0 16px 36px -24px rgba(43, 39, 36, 0.24);
+  --shadow-card:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 0 0 1px rgba(43, 39, 36, 0.04), 0 1px 2px rgba(43, 39, 36, 0.04),
+    0 16px 36px -24px rgba(43, 39, 36, 0.24);
   --shadow-thumb: 0 0 0 1px rgba(43, 39, 36, 0.05), 0 1px 3px rgba(43, 39, 36, 0.1);
-  --shadow-pop: 0 0 0 1px rgba(43, 39, 36, 0.06), 0 30px 60px -20px rgba(43, 39, 36, 0.3), 0 4px 12px -4px rgba(43, 39, 36, 0.08);
+  --shadow-pop:
+    0 0 0 1px rgba(43, 39, 36, 0.06), 0 30px 60px -20px rgba(43, 39, 36, 0.3), 0 4px 12px -4px rgba(43, 39, 36, 0.08);
   --overlay: rgba(23, 19, 15, 0.32);
   --titlebar-height: 36px;
-  --modal-width: 56%;
+  --modal-width: clamp(480px, 40vw + 340px, 1000px);
   --modal-min-width: 480px;
   --modal-max-width: 1000px;
   --modal-max-height: 90vh;
   --modal-sm-width: 400px;
-  --modal-wide-width: 76%;
+  --modal-wide-width: clamp(600px, 30vw + 560px, 1000px);
   --modal-wide-min-width: 600px;
   --modal-padding: 16px 20px;
   --modal-radius: 12px;

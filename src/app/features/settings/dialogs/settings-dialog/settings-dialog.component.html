@@ -23,7 +23,8 @@
             [attr.aria-current]="section() === item.id ? 'page' : null"
             (click)="section.set(item.id)"
           >
-            {{ item.label }}
+            <app-icon [name]="item.icon" class="ic" />
+            <span>{{ item.label }}</span>
           </button>
         }
       </nav>

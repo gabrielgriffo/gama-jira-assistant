@@ -51,39 +51,20 @@ const PRESET_PREV_MONTH: RangePreset = {
   },
 };
 
-export const WORKLOG_GENERATE_PRESETS: RangePreset[] = [
+export const DEFAULT_RANGE_PRESETS: RangePreset[] = [
   PRESET_TODAY,
   PRESET_THIS_WEEK,
   PRESET_PREV_WEEK,
   PRESET_7D,
-  PRESET_THIS_MONTH,
-  PRESET_PREV_MONTH,
-];
-
-export const WORKLOG_HISTORY_PRESETS: RangePreset[] = [
-  PRESET_THIS_MONTH,
-  PRESET_PREV_MONTH,
-  PRESET_THIS_WEEK,
-  PRESET_PREV_WEEK,
   PRESET_30D,
   PRESET_90D,
+  PRESET_THIS_MONTH,
+  PRESET_PREV_MONTH,
 ];
 
-export const DEFAULT_RANGE_PRESETS: RangePreset[] = [
-  { id: "today", label: "Hoje", resolve: (t) => ({ from: t, to: t }) },
-  { id: "7d", label: "Últimos 7 dias", resolve: (t) => ({ from: addDays(t, -6), to: t }) },
-  { id: "30d", label: "Últimos 30 dias", resolve: (t) => ({ from: addDays(t, -29), to: t }) },
-  { id: "90d", label: "Últimos 90 dias", resolve: (t) => ({ from: addDays(t, -89), to: t }) },
-  { id: "month", label: "Este mês", resolve: (t) => ({ from: firstDayOf(monthOf(t)), to: t }) },
-  {
-    id: "prev-month",
-    label: "Mês passado",
-    resolve: (t) => {
-      const end = addDays(firstDayOf(monthOf(t)), -1);
-      return { from: firstDayOf(monthOf(end)), to: end };
-    },
-  },
-];
+export const WORKLOG_GENERATE_PRESETS = DEFAULT_RANGE_PRESETS;
+
+export const WORKLOG_HISTORY_PRESETS = DEFAULT_RANGE_PRESETS;
 
 export function matchPreset(
   range: DateRange,

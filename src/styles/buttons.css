@@ -70,9 +70,9 @@
   height: 24px;
 }
 .icon-btn.lg {
-  width: 28px;
-  height: 28px;
-  border-radius: 4px;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
 }
 .icon-btn:disabled {
   opacity: 0.35;

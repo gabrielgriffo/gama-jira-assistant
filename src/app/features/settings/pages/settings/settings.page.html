@@ -138,7 +138,10 @@
             }
           </div>
           @if (pontoMaisState().connected) {
-            <button class="btn" (click)="disconnectPontoMais()" [disabled]="pontoMaisLoading()">Desconectar</button>
+            <button class="btn stable" (click)="disconnectPontoMais()" [disabled]="pontoMaisLoading()">
+              <span [class.off]="pontoMaisLoading()">Desconectar</span>
+              <span [class.off]="!pontoMaisLoading()">Desconectando…</span>
+            </button>
           }
           @if (!pontoMaisState().connected) {
             <button class="btn primary" (click)="openPontoMaisForm()">Conectar</button>
@@ -173,11 +176,12 @@
             <span [class.off]="!statusesSyncing()"><span class="spin"></span>Sincronizando…</span>
           </button>
           <button
-            class="btn primary"
+            class="btn primary stable"
             (click)="saveStatusChanges()"
             [disabled]="!statusesDirty() || statusesSaving() || statusesSyncing()"
           >
-            Salvar
+            <span [class.off]="statusesSaving()">Salvar</span>
+            <span [class.off]="!statusesSaving()"><span class="spin"></span>Salvando…</span>
           </button>
         </div>
         @if (!jiraStatuses().length) {

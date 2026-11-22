@@ -1,9 +1,33 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { exceedsMaxRange, fromRangePreference, selectedPreset, toRangePreference, WORKLOG_GENERATE_PRESETS } from "./range-presets.ts";
+import {
+  DEFAULT_RANGE_PRESETS,
+  exceedsMaxRange,
+  fromRangePreference,
+  selectedPreset,
+  toRangePreference,
+  WORKLOG_GENERATE_PRESETS,
+  WORKLOG_HISTORY_PRESETS,
+} from "./range-presets.ts";
 
 const monday = "2026-11-16";
 const presets = WORKLOG_GENERATE_PRESETS;
+
+test("as três telas oferecem os mesmos atalhos de período", () => {
+  const ids = (list) => list.map((p) => p.id);
+  const expected = ["today", "week", "prev-week", "7d", "30d", "90d", "month", "prev-month"];
+  assert.deepEqual(ids(DEFAULT_RANGE_PRESETS), expected);
+  assert.deepEqual(ids(WORKLOG_GENERATE_PRESETS), expected);
+  assert.deepEqual(ids(WORKLOG_HISTORY_PRESETS), expected);
+});
+
+test("atalhos de semana passada, 30 dias, 90 dias e mês passado resolvem os períodos esperados", () => {
+  const range = (id) => presets.find((p) => p.id === id).resolve("2026-11-18");
+  assert.deepEqual(range("prev-week"), { from: "2026-11-09", to: "2026-11-15" });
+  assert.deepEqual(range("30d"), { from: "2026-10-20", to: "2026-11-18" });
+  assert.deepEqual(range("90d"), { from: "2026-08-21", to: "2026-11-18" });
+  assert.deepEqual(range("prev-month"), { from: "2026-10-01", to: "2026-10-31" });
+});
 
 test("atalho escolhido prevalece sobre outro que resolve para as mesmas datas", () => {
   const week = { from: monday, to: monday, presetId: "week" };
