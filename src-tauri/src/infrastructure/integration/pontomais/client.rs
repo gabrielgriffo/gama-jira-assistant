@@ -154,7 +154,7 @@ impl PontoMaisClient {
             .await
             .map_err(|e| DomainError::ParseError(e.without_url().to_string()))?;
 
-        if body.get("redirect_to_login").and_then(|v| v.as_bool()).unwrap_or(false) {
+        if redirects_to_login(&body) {
             log::info!("[PONTOMAIS] sessão recusada pela API (redirect_to_login)");
             return Err(DomainError::SessionExpired);
         }
@@ -169,6 +169,13 @@ impl PontoMaisClient {
         }
         if !status.is_success() {
             let body = response.text().await.unwrap_or_default();
+            if asks_for_login(&body) {
+                log::info!(
+                    "[PONTOMAIS] sessão recusada pela API (status {}, redirect_to_login)",
+                    status.as_u16()
+                );
+                return Err(DomainError::SessionExpired);
+            }
             log::debug!(
                 "[PONTOMAIS] status {} - corpo: {}",
                 status.as_u16(),
@@ -228,6 +235,14 @@ fn header_text(headers: &HeaderMap, name: &str) -> String {
         .unwrap_or_default()
         .trim()
         .to_string()
+}
+
+fn redirects_to_login(body: &serde_json::Value) -> bool {
+    body.get("redirect_to_login").and_then(|v| v.as_bool()).unwrap_or(false)
+}
+
+fn asks_for_login(body: &str) -> bool {
+    serde_json::from_str::<serde_json::Value>(body).is_ok_and(|value| redirects_to_login(&value))
 }
 
 impl Default for PontoMaisClient {
@@ -342,6 +357,39 @@ mod tests {
             .get_json(&credentials(), "/api/session", &[])
             .await;
         assert_eq!(result.unwrap_err(), DomainError::SessionExpired);
+    }
+
+    #[tokio::test]
+    async fn forbidden_with_redirect_to_login_is_a_session_expired() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/api/session"))
+            .respond_with(ResponseTemplate::new(403).set_body_json(serde_json::json!({
+                "error": "Faça login para continuar.",
+                "redirect_to_login": true
+            })))
+            .mount(&server)
+            .await;
+
+        let result: Result<serde_json::Value, DomainError> = PontoMaisClient::with_base_url(&server.uri())
+            .get_json(&credentials(), "/api/session", &[])
+            .await;
+        assert_eq!(result.unwrap_err(), DomainError::SessionExpired);
+    }
+
+    #[tokio::test]
+    async fn forbidden_without_redirect_to_login_stays_an_api_error() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/api/session"))
+            .respond_with(ResponseTemplate::new(403).set_body_json(serde_json::json!({ "error": "sem permissão" })))
+            .mount(&server)
+            .await;
+
+        let result: Result<serde_json::Value, DomainError> = PontoMaisClient::with_base_url(&server.uri())
+            .get_json(&credentials(), "/api/session", &[])
+            .await;
+        assert!(matches!(result.unwrap_err(), DomainError::ExternalApiError(_)));
     }
 
     #[tokio::test]

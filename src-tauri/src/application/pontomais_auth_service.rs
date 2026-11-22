@@ -82,10 +82,14 @@ impl PontoMaisAuthService {
         state.account = Some(credentials.email.clone());
         state.auto_reconnect = auto_reconnect;
         state.failed_attempts = 0;
+        mark_signed_in(&mut state, now());
         self.state.save(&state);
 
         self.register_device(&credentials, &mut state).await;
-        log::info!("[PONTOMAIS] Conta conectada");
+        log::info!(
+            "[PONTOMAIS] Conta conectada pelo usuário (reconexão automática {})",
+            if auto_reconnect { "ativada" } else { "desativada" }
+        );
         Ok(())
     }
 
@@ -99,7 +103,7 @@ impl PontoMaisAuthService {
         }
 
         self.forget_session()?;
-        log::info!("[PONTOMAIS] Conta desconectada");
+        log::info!("[PONTOMAIS] Conta desconectada pelo usuário");
         Ok(())
     }
 
@@ -118,6 +122,7 @@ impl PontoMaisAuthService {
         }
 
         let mut state = self.state.load();
+        log::info!("[PONTOMAIS] {}", session_age_report(&state, failed, now()));
         let stored = if state.auto_reconnect {
             self.credentials.get_pontomais_password()?
         } else {
@@ -125,7 +130,7 @@ impl PontoMaisAuthService {
         };
 
         let Some(login) = stored else {
-            log::info!("[PONTOMAIS] Sessão expirada e sem senha guardada; desconectando");
+            log::info!("[PONTOMAIS] Conta desconectada: sessão expirada e reconexão automática desativada");
             self.forget_session()?;
             return Err(DomainError::SessionExpired);
         };
@@ -136,8 +141,10 @@ impl PontoMaisAuthService {
                 self.credentials.save_pontomais_credentials(&credentials)?;
                 state.account = Some(credentials.email.clone());
                 state.failed_attempts = 0;
+                mark_signed_in(&mut state, now());
                 self.state.save(&state);
                 self.register_device(&credentials, &mut state).await;
+                log::info!("[PONTOMAIS] Conta reconectada automaticamente com a senha guardada");
                 Ok(credentials)
             }
             Err(failure) if is_login_refusal(&failure) => {
@@ -145,7 +152,9 @@ impl PontoMaisAuthService {
                 self.state.save(&state);
 
                 if state.failed_attempts >= MAX_FAILED_RECONNECTS {
-                    log::warn!("[PONTOMAIS] Senha guardada recusada {MAX_FAILED_RECONNECTS} vezes; desconectando");
+                    log::warn!(
+                        "[PONTOMAIS] Conta desconectada: senha guardada recusada {MAX_FAILED_RECONNECTS} vezes na reconexão automática"
+                    );
                     self.forget_session()?;
                     Err(DomainError::SessionExpired)
                 } else {
@@ -164,12 +173,21 @@ impl PontoMaisAuthService {
         }
     }
 
+    pub async fn mark_session_used(&self) {
+        let _guard = self.session_lock.lock().await;
+        let mut state = self.state.load();
+        state.last_used_at = Some(now());
+        self.state.save(&state);
+    }
+
     fn forget_session(&self) -> Result<(), DomainError> {
         self.credentials.delete_pontomais_credentials()?;
         self.credentials.delete_pontomais_password()?;
 
         let mut state = self.state.load();
         state.failed_attempts = 0;
+        state.signed_in_at = None;
+        state.last_used_at = None;
         self.state.save(&state);
         Ok(())
     }
@@ -187,6 +205,34 @@ impl PontoMaisAuthService {
             Err(e) => log::warn!("[PONTOMAIS] Registro do dispositivo não confirmado: {e}"),
         }
     }
+}
+
+fn now() -> i64 {
+    chrono::Utc::now().timestamp()
+}
+
+fn mark_signed_in(state: &mut PontoMaisState, at: i64) {
+    state.signed_in_at = Some(at);
+    state.last_used_at = Some(at);
+}
+
+fn hours_between(from: i64, to: i64) -> String {
+    format!("{:.1} h", (to - from) as f64 / 3600.0)
+}
+
+fn session_age_report(state: &PontoMaisState, credentials: &PontoMaisCredentials, now: i64) -> String {
+    let since_login = state
+        .signed_in_at
+        .map_or_else(|| "desconhecido".to_string(), |at| hours_between(at, now));
+    let since_use = state
+        .last_used_at
+        .map_or_else(|| "desconhecido".to_string(), |at| hours_between(at, now));
+    let deadline = match credentials.expiry.parse::<i64>() {
+        Ok(expiry) if expiry > now => format!("faltavam {} para o vencimento", hours_between(now, expiry)),
+        Ok(expiry) => format!("vencida há {}", hours_between(expiry, now)),
+        Err(_) => "vencimento desconhecido".to_string(),
+    };
+    format!("Sessão recusada: {since_login} desde o login, {since_use} desde o último uso, {deadline}")
 }
 
 fn is_login_refusal(failure: &PontoMaisAuthFailure) -> bool {
@@ -230,6 +276,43 @@ mod tests {
         assert!(unreadable.connected);
         assert_eq!(unreadable.account.as_deref(), Some("dev@acme.com"));
         assert!(!missing.connected);
+    }
+
+    fn credentials_expiring_at(expiry: i64) -> PontoMaisCredentials {
+        PontoMaisCredentials::new(
+            "dev@acme.com".into(),
+            "tok".into(),
+            "cli".into(),
+            expiry.to_string(),
+            "6f9619ff-8b86-4d01-b42d-00cf4fc964ff".into(),
+        )
+    }
+
+    #[test]
+    fn the_refusal_report_measures_the_session_age() {
+        let login = 1_000_000;
+        let mut state = PontoMaisState::default();
+        mark_signed_in(&mut state, login);
+        state.last_used_at = Some(login + 24 * 3600);
+        let now = login + 81 * 3600 + 1800;
+
+        let report = session_age_report(&state, &credentials_expiring_at(login + 180 * 3600), now);
+
+        assert_eq!(
+            report,
+            "Sessão recusada: 81.5 h desde o login, 57.5 h desde o último uso, faltavam 98.5 h para o vencimento"
+        );
+    }
+
+    #[test]
+    fn the_refusal_report_handles_unknown_times_and_expired_sessions() {
+        let now = 1_000_000;
+        let report = session_age_report(&PontoMaisState::default(), &credentials_expiring_at(now - 7200), now);
+
+        assert_eq!(
+            report,
+            "Sessão recusada: desconhecido desde o login, desconhecido desde o último uso, vencida há 2.0 h"
+        );
     }
 
     #[test]

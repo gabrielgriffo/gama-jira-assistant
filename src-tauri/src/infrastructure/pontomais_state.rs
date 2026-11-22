@@ -12,6 +12,8 @@ pub struct PontoMaisState {
     pub account: Option<String>,
     pub auto_reconnect: bool,
     pub failed_attempts: u32,
+    pub signed_in_at: Option<i64>,
+    pub last_used_at: Option<i64>,
 }
 
 pub struct PontoMaisStateStore {

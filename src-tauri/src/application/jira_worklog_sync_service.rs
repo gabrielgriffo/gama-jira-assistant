@@ -154,6 +154,7 @@ impl JiraWorklogSyncService {
             }
             other => other?,
         };
+        self.pontomais_auth.mark_session_used().await;
 
         let cards: Vec<_> = work_days.into_iter().flat_map(|day| day.time_cards).collect();
         self.throttle.ensure_generation(generation)?;
