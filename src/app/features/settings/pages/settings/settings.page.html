@@ -206,6 +206,31 @@
 
     <section class="set-section">
       <div class="set-title">
+        <h2>Atualizações</h2>
+      </div>
+      <div class="group">
+        <div class="row">
+          <div class="row-text">
+            <b>Gama {{ update.currentVersion() }}</b>
+            <span>{{ update.statusText() }}</span>
+          </div>
+          @if (update.status().phase === "ready") {
+            <button class="btn primary" (click)="update.install()">Atualizar agora</button>
+          } @else {
+            <button class="btn" (click)="update.checkNow()" [disabled]="update.busy()">
+              @if (update.status().phase === "checking") {
+                <span class="spin"></span>Verificando…
+              } @else {
+                Verificar atualizações
+              }
+            </button>
+          }
+        </div>
+      </div>
+    </section>
+
+    <section class="set-section">
+      <div class="set-title">
         <h2>Dados locais</h2>
       </div>
       <div class="group">

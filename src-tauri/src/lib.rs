@@ -70,6 +70,8 @@ pub fn run() {
                 .skip_initial_state(MAIN_WINDOW)
                 .build(),
         )
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .setup(|app| {
             log::info!("Gama iniciado - logging plugin ativo");
 

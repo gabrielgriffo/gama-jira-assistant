@@ -10,6 +10,7 @@ import { SettingsDialogService } from "./features/settings/settings-dialog.servi
 import { IconComponent } from "./shared/ui/icon/icon.component";
 import { ToastComponent } from "./shared/ui/toast/toast.component";
 import { ThemeService } from "./core/preferences/theme.service";
+import { UpdateService } from "./core/update/update.service";
 
 @Component({
   selector: "app-root",
@@ -32,6 +33,7 @@ export class AppComponent implements OnInit {
   private syncStateService = inject(SyncStateService);
   readonly settingsDialog = inject(SettingsDialogService);
   private readonly theme = inject(ThemeService);
+  readonly update = inject(UpdateService);
 
   readonly userName = computed(() => {
     const state = this.jiraStateService.state();
@@ -48,6 +50,7 @@ export class AppComponent implements OnInit {
   ngOnInit() {
     this.theme.initialize();
     this.initStateServices();
+    void this.update.initialize();
   }
 
   initStateServices() {

@@ -67,6 +67,32 @@
   padding-top: 6px;
   border-top: 1px solid var(--line-2);
 }
+.update-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0 4px 6px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--info-soft);
+}
+.update-card b {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+  color: var(--info);
+}
+.update-card span {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--muted);
+}
+.update-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
 .who {
   display: block;
   width: 100%;

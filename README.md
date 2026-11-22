@@ -83,6 +83,7 @@ Os dados exibidos nas imagens são fictícios.
 - **Histórico de worklogs.** Compara o tempo registrado no Jira com o tempo de ponto, com indicadores de total, diferença e dias pendentes. A visualização por dia lista cada worklog, e a visualização em grade mostra uma linha por issue e uma coluna por dia, agrupadas por mês.
 - **Cache local com sincronização em segundo plano.** Cada tela abre com os dados já conhecidos e é atualizada à medida que o Jira responde. Um intervalo mínimo evita buscas repetidas ao trocar de tela.
 - **Tema claro, escuro ou do sistema.**
+- **Atualização automática.** Ao abrir, o Gama verifica se há uma versão nova, baixa em segundo plano e mostra **Atualizar agora** na barra lateral. A instalação só acontece depois da confirmação, e o aplicativo reinicia em seguida. A assinatura de cada atualização é conferida antes da instalação.
 - **Credenciais no cofre do sistema.** O token do Jira e a senha do PontoMais ficam no Gerenciador de Credenciais do Windows ou no keyring do Linux, fora do banco e do webview.
 
 ## Configurações
@@ -94,6 +95,7 @@ Os dados exibidos nas imagens são fictícios.
 | Jira | URL do site, e-mail e token da API. Mostra a conta conectada e permite desconectar. |
 | PontoMais | E-mail e senha, com a opção de reconectar automaticamente quando a sessão expirar. |
 | Status de desenvolvimento | Status do Jira, agrupados por categoria, em que o tempo da issue é contado. |
+| Atualizações | Mostra a versão instalada e permite verificar manualmente se há uma versão nova. |
 | Apagar dados locais | Remove tarefas, histórico de status, worklogs e marcações de ponto guardados neste computador. As contas continuam conectadas. |
 
 ## Limitações conhecidas
@@ -105,7 +107,6 @@ Os dados exibidos nas imagens são fictícios.
 - **"Registrar novamente" não substitui.** A ação cria novos worklogs no Jira; os anteriores precisam ser removidos no próprio Jira, se for o caso.
 - **Requisitos.** Windows 10 ou 11, 64 bits. Linux 64 bits com WebKitGTK 4.1 (Ubuntu 22.04 ou superior) e um keyring compatível com Secret Service, como o `gnome-keyring`.
 - **Instalador sem assinatura.** O SmartScreen e alguns antivírus podem solicitar confirmação na primeira execução.
-- **Sem atualização automática.** As versões novas são baixadas manualmente pela [página de releases](https://github.com/gabrielgriffo/gama-jira-assistant/releases/latest).
 
 ## Detalhes técnicos
 
@@ -180,7 +181,7 @@ cd src-tauri && cargo test --lib
 npm run tauri build
 ```
 
-Os instaladores são gerados em `src-tauri/target/release/bundle/`. Uma tag `v<versão>` publicada no GitHub dispara o workflow `.github/workflows/release.yml`, que compila para Windows e Linux, ajusta a versão em `package.json`, `Cargo.toml` e `tauri.conf.json` e publica a release com a tabela de downloads.
+Os instaladores são gerados em `src-tauri/target/release/bundle/`. Uma tag `v<versão>` publicada no GitHub dispara o workflow `.github/workflows/release.yml`, que compila para Windows e Linux, ajusta a versão em `package.json`, `Cargo.toml` e `tauri.conf.json` e publica a release com a tabela de downloads. O workflow também assina os pacotes de atualização e publica o `latest.json` consultado pelo atualizador; para isso, os secrets `TAURI_SIGNING_PRIVATE_KEY` e `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` precisam estar configurados no repositório. Builds locais com `npm run tauri build` não geram esses pacotes e não precisam da chave.
 
 Tecnologias:
 

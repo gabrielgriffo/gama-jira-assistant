@@ -17,6 +17,7 @@ import { changeTracker } from "../../../../shared/async/change-tracker";
 import { IconComponent } from "../../../../shared/ui/icon/icon.component";
 import { ThemeService } from "../../../../core/preferences/theme.service";
 import type { Theme } from "../../../../core/preferences/theme";
+import { UpdateService } from "../../../../core/update/update.service";
 
 const STATUS_COLUMNS = 3;
 
@@ -61,6 +62,7 @@ export class SettingsPage implements OnInit {
   private appSettings = inject(AppSettingsService);
   private statusCatalog = inject(StatusCatalogStore);
   private localData = inject(LocalDataService);
+  readonly update = inject(UpdateService);
 
   theme: Theme = "light";
 
