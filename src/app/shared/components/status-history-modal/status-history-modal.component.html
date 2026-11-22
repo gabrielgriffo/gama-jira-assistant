@@ -1,7 +1,7 @@
 @if (isOpen()) {
   <div class="overlay" animate.leave="modal-leave" (click)="onBackdropClick($event)">
     <div
-      class="dialog"
+      class="dialog history-dlg"
       role="dialog"
       aria-modal="true"
       aria-labelledby="dlg-title"
@@ -18,14 +18,9 @@
             <p>Carregando histórico…</p>
           }
         </div>
-        <button class="btn" (click)="onSync()" [disabled]="loading() || syncing()">
-          @if (syncing()) {
-            <span class="spin"></span>Sincronizando…
-          }
-          @if (!syncing()) {
-            <app-icon name="sync" class="ic" />
-            Sincronizar
-          }
+        <button class="btn stable" (click)="onSync()" [disabled]="loading() || syncing()">
+          <span [class.off]="syncing()"><app-icon name="sync" class="ic" /> Sincronizar</span>
+          <span [class.off]="!syncing()"><span class="spin"></span>Sincronizando…</span>
         </button>
         <button class="icon-btn lg" (click)="onClose()" aria-label="Fechar">
           <app-icon name="close" class="ic" />

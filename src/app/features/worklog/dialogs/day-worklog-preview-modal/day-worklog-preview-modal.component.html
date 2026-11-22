@@ -102,7 +102,7 @@
                   >
                     <app-icon name="close" class="ic" />
                   </button>
-                  <div class="row-err">{{ rowError(draft) }}</div>
+                  <div class="row-err" [title]="rowError(draft)">{{ rowError(draft) }}</div>
                 </div>
               }
             </div>
@@ -135,18 +135,23 @@
           <button class="btn primary" (click)="onClose()">Fechar</button>
         }
         @if (!confirming() && !allSent) {
-          <span class="grow"
-            >Total: {{ hfmt(total()) }} de {{ hfmt(day()?.totalMinutes ?? 0) }} registradas no ponto</span
-          >
+          @if (footerAlert(); as alert) {
+            <span class="grow" [class]="alert.kind" [title]="alert.text">{{ alert.text }}</span>
+          } @else {
+            <span class="grow"
+              >Total: {{ hfmt(total()) }} de {{ hfmt(day()?.totalMinutes ?? 0) }} registradas no ponto</span
+            >
+          }
           <button class="btn" (click)="onClose()" [disabled]="sending()">Salvar rascunhos e fechar</button>
-          <button class="btn launch" (click)="askSend()" [disabled]="sending() || hasErrors || toSend.length === 0">
-            @if (sending()) {
-              <span class="spin"></span>Enviando…
-            }
-            @if (!sending()) {
-              <app-icon name="send" class="ic" />
-              Enviar {{ worklogLabel(toSend.length) }}
-            }
+          <button
+            class="btn launch stable"
+            (click)="askSend()"
+            [disabled]="sending() || hasErrors || toSend.length === 0"
+          >
+            <span [class.off]="sending()"
+              ><app-icon name="send" class="ic" /> Enviar {{ worklogLabel(toSend.length) }}</span
+            >
+            <span [class.off]="!sending()"><span class="spin"></span>Enviando…</span>
           </button>
         }
       </div>

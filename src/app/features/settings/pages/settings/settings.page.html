@@ -100,29 +100,24 @@
             <b>Jira</b>
             @if (jiraLoading()) {
               <span>Carregando…</span>
-            }
-            @if (!jiraLoading() && jiraState().connected && jiraState().user && jiraState().instance) {
+            } @else if (jiraError() && !showLoginForm()) {
+              <span class="form-error" [title]="jiraError()">{{ jiraError() }}</span>
+            } @else if (jiraState().connected && jiraState().user && jiraState().instance) {
               <span>Conectado como {{ jiraState().user?.displayName }} em {{ jiraState().instance }}</span>
-            }
-            @if (!jiraLoading() && jiraState().connected && jiraState().email && !jiraState().user) {
+            } @else if (jiraState().connected && jiraState().email && !jiraState().user) {
               <span>Conectado como {{ jiraState().email }} em {{ jiraState().instance }}</span>
-            }
-            @if (!jiraLoading() && jiraState().connected && !jiraState().email && !jiraState().user) {
+            } @else if (jiraState().connected) {
               <span>Conectado</span>
-            }
-            @if (!jiraLoading() && jiraError() && !showLoginForm()) {
-              <span class="form-error">{{ jiraError() }}</span>
-            }
-            @if (!jiraLoading() && !jiraState().connected && !jiraError() && jiraStateError()) {
-              <span class="form-error">{{ jiraStateError() }}</span>
-            }
-            @if (!jiraLoading() && !jiraState().connected && !jiraError() && !jiraStateError()) {
+            } @else if (jiraStateError()) {
+              <span class="form-error" [title]="jiraStateError()">{{ jiraStateError() }}</span>
+            } @else {
               <span>Desconectado. Conecte-se para utilizar o Gama.</span>
             }
           </div>
           @if (jiraState().connected) {
-            <button class="btn" (click)="disconnectJira()" [disabled]="jiraLoading()">
-              {{ jiraLoading() ? "Desconectando…" : "Desconectar" }}
+            <button class="btn stable" (click)="disconnectJira()" [disabled]="jiraLoading()">
+              <span [class.off]="jiraLoading()">Desconectar</span>
+              <span [class.off]="!jiraLoading()">Desconectando…</span>
             </button>
           }
           @if (!jiraState().connected) {
@@ -134,14 +129,12 @@
         <div class="row">
           <div class="row-text">
             <b>PontoMais</b>
-            @if (pontoMaisState().connected) {
-              <span>Conectado como {{ pontoMaisState().account }}</span>
-            }
-            @if (!pontoMaisState().connected) {
-              <span>Desconectado. Conecte-se para importar as marcações de ponto.</span>
-            }
             @if (pontoMaisError() && !showPontoMaisForm()) {
-              <span class="form-error">{{ pontoMaisError() }}</span>
+              <span class="form-error" [title]="pontoMaisError()">{{ pontoMaisError() }}</span>
+            } @else if (pontoMaisState().connected) {
+              <span>Conectado como {{ pontoMaisState().account }}</span>
+            } @else {
+              <span>Desconectado. Conecte-se para importar as marcações de ponto.</span>
             }
           </div>
           @if (pontoMaisState().connected) {
@@ -172,17 +165,12 @@
             }
           </div>
           <button
-            class="btn"
+            class="btn stable"
             (click)="syncJiraStatusCatalog()"
             [disabled]="statusesSyncing() || statusesSaving() || !jiraState().connected"
           >
-            @if (statusesSyncing()) {
-              <span class="spin"></span>Sincronizando…
-            }
-            @if (!statusesSyncing()) {
-              <app-icon name="sync" class="ic" />
-              Sincronizar
-            }
+            <span [class.off]="statusesSyncing()"><app-icon name="sync" class="ic" /> Sincronizar</span>
+            <span [class.off]="!statusesSyncing()"><span class="spin"></span>Sincronizando…</span>
           </button>
           <button
             class="btn primary"
@@ -236,12 +224,9 @@
           @if (update.status().phase === "ready") {
             <button class="btn primary" (click)="update.install()">Atualizar agora</button>
           } @else {
-            <button class="btn" (click)="update.checkNow()" [disabled]="update.busy()">
-              @if (update.status().phase === "checking") {
-                <span class="spin"></span>Verificando…
-              } @else {
-                Verificar atualizações
-              }
+            <button class="btn stable" (click)="update.checkNow()" [disabled]="update.busy()">
+              <span [class.off]="update.status().phase === 'checking'">Verificar atualizações</span>
+              <span [class.off]="update.status().phase !== 'checking'"><span class="spin"></span>Verificando…</span>
             </button>
           }
         </div>
@@ -260,13 +245,9 @@
               computador.</span
             >
           </div>
-          <button class="btn" (click)="clearLocalData()" [disabled]="clearingLocalData()">
-            @if (clearingLocalData()) {
-              <span class="spin"></span>Apagando…
-            }
-            @if (!clearingLocalData()) {
-              Apagar
-            }
+          <button class="btn stable" (click)="clearLocalData()" [disabled]="clearingLocalData()">
+            <span [class.off]="clearingLocalData()">Apagar</span>
+            <span [class.off]="!clearingLocalData()"><span class="spin"></span>Apagando…</span>
           </button>
         </div>
       </div>
@@ -401,19 +382,13 @@
             [disabled]="jiraLoading()"
           />
         </label>
-        @if (jiraError()) {
-          <p class="form-error">{{ jiraError() }}</p>
-        }
+        <p class="form-error msg-slot" aria-live="polite" [title]="jiraError() ?? ''">{{ jiraError() }}</p>
       </div>
       <div class="dialog-foot">
         <button type="button" class="btn quiet" (click)="closeLoginForm()" [disabled]="jiraLoading()">Cancelar</button>
-        <button type="submit" class="btn primary" [disabled]="jiraLoading()">
-          @if (jiraLoading()) {
-            <span class="spin"></span>Conectando…
-          }
-          @if (!jiraLoading()) {
-            Conectar
-          }
+        <button type="submit" class="btn primary stable" [disabled]="jiraLoading()">
+          <span [class.off]="jiraLoading()">Conectar</span>
+          <span [class.off]="!jiraLoading()"><span class="spin"></span>Conectando…</span>
         </button>
       </div>
     </form>
@@ -475,21 +450,15 @@
           <input class="cb" type="checkbox" name="pontoMaisAutoReconnect" [(ngModel)]="pontoMaisAutoReconnect" />
           <span>Reconectar automaticamente quando a sessão expirar</span>
         </label>
-        @if (pontoMaisError()) {
-          <p class="form-error">{{ pontoMaisError() }}</p>
-        }
+        <p class="form-error msg-slot" aria-live="polite" [title]="pontoMaisError() ?? ''">{{ pontoMaisError() }}</p>
       </div>
       <div class="dialog-foot">
         <button type="button" class="btn quiet" (click)="closePontoMaisForm()" [disabled]="pontoMaisLoading()">
           Cancelar
         </button>
-        <button type="submit" class="btn primary" [disabled]="!canConnectPontoMais()">
-          @if (pontoMaisLoading()) {
-            <span class="spin"></span>Conectando…
-          }
-          @if (!pontoMaisLoading()) {
-            Conectar
-          }
+        <button type="submit" class="btn primary stable" [disabled]="!canConnectPontoMais()">
+          <span [class.off]="pontoMaisLoading()">Conectar</span>
+          <span [class.off]="!pontoMaisLoading()"><span class="spin"></span>Conectando…</span>
         </button>
       </div>
     </form>

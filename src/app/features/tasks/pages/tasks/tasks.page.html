@@ -16,14 +16,9 @@
       (applied)="applyRange($event)"
     />
     <div class="spacer"></div>
-    <button class="btn" (click)="loadTasks(true)" [disabled]="syncing()">
-      @if (syncing()) {
-        <span class="spin"></span>Sincronizando…
-      }
-      @if (!syncing()) {
-        <app-icon name="sync" class="ic" />
-        Sincronizar
-      }
+    <button class="btn stable" (click)="loadTasks(true)" [disabled]="syncing()">
+      <span [class.off]="syncing()"><app-icon name="sync" class="ic" /> Sincronizar</span>
+      <span [class.off]="!syncing()"><span class="spin"></span>Sincronizando…</span>
     </button>
   </div>
 </header>

@@ -66,13 +66,23 @@ input.sm {
 }
 .drafts .row-err {
   grid-column: 1 / -1;
-  padding: 6px 0 0 4px;
+  min-height: 20px;
+  padding: 4px 0 0 4px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
   font-size: 12px;
   line-height: 16px;
   color: var(--err);
 }
-.drafts .row-err:empty {
-  display: none;
+.dialog-foot .grow.warn {
+  color: var(--warn);
+}
+.dialog-foot .grow.err {
+  color: var(--err);
+}
+.dialog-foot {
+  min-height: 44px;
 }
 .st {
   display: inline-flex;

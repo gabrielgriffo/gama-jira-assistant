@@ -104,3 +104,16 @@
   color: var(--ink);
   box-shadow: var(--shadow-thumb);
 }
+.btn.stable {
+  display: inline-grid;
+  justify-items: center;
+}
+.btn.stable > span {
+  grid-area: 1 / 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.btn.stable > .off {
+  visibility: hidden;
+}

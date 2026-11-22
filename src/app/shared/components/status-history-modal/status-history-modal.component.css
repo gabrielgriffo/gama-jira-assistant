@@ -89,3 +89,6 @@
 .cl-items .badge.from {
   opacity: 0.6;
 }
+.history-dlg {
+  height: min(var(--modal-max-height), 640px);
+}

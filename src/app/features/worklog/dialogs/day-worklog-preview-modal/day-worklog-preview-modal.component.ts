@@ -44,6 +44,7 @@ export class DayWorklogPreviewModalComponent implements OnChanges {
   readonly confirming = signal(false);
   readonly errors = signal<Record<number, DraftError>>({});
   readonly notes = signal<DraftNote[]>([]);
+  readonly footerAlert = signal<{ kind: "warn" | "err"; text: string } | null>(null);
   readonly total = signal(0);
   readonly requests = signal("");
 
@@ -248,35 +249,40 @@ export class DayWorklogPreviewModalComponent implements OnChanges {
     this.errors.set(validateDrafts(drafts, this.timeZone()));
     this.total.set(drafts.filter((d) => Number.isFinite(d.duration)).reduce((sum, d) => sum + d.duration, 0));
     this.notes.set(this.buildNotes());
+    this.footerAlert.set(this.buildFooterAlert());
     this.requests.set(this.buildRequests());
   }
 
   private buildNotes(): DraftNote[] {
     const day = this.day();
     if (!day) return [];
-    const notes: DraftNote[] = [];
-    const total = this.total();
     const otherRegistered = minutesRegisteredElsewhere(day, this.drafts());
-    if (otherRegistered > 0) {
-      notes.push({
+    if (otherRegistered <= 0) return [];
+    return [
+      {
         kind: "info",
         text: `Este dia já possui ${this.hfmt(otherRegistered)} registradas no Jira. Verifique se o mesmo trabalho não será registrado em duplicidade.`,
-      });
-    }
-    if (total > day.totalMinutes) {
-      notes.push({
-        kind: "",
-        text: `O total dos worklogs (${this.hfmt(total)}) excede o ponto do dia (${this.hfmt(day.totalMinutes)}).`,
-      });
-    }
+      },
+    ];
+  }
+
+  private buildFooterAlert(): { kind: "warn" | "err"; text: string } | null {
     const count = Object.keys(this.errors()).length;
     if (count) {
-      notes.push({
+      return {
         kind: "err",
         text: `${count === 1 ? "Um worklog requer" : `${count} worklogs requerem`} ajustes antes do envio.`,
-      });
+      };
     }
-    return notes;
+    const day = this.day();
+    const total = this.total();
+    if (day && total > day.totalMinutes) {
+      return {
+        kind: "warn",
+        text: `O total dos worklogs (${this.hfmt(total)}) excede o ponto do dia (${this.hfmt(day.totalMinutes)}).`,
+      };
+    }
+    return null;
   }
 
   private buildRequests(): string {

@@ -599,3 +599,13 @@ gama-date-range-panel.pop-leave {
     opacity: 0;
   }
 }
+.msg-slot {
+  display: -webkit-box;
+  min-height: 32px;
+  overflow: hidden;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--err);
+}

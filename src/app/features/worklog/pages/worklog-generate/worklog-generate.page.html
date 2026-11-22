@@ -13,23 +13,13 @@
       (applied)="applyRange($event)"
     />
     <div class="spacer"></div>
-    <button class="btn" (click)="syncPeriod()" [disabled]="syncing()">
-      @if (syncing()) {
-        <span class="spin"></span>Sincronizando…
-      }
-      @if (!syncing()) {
-        <app-icon name="sync" class="ic" />
-        Sincronizar
-      }
+    <button class="btn stable" (click)="syncPeriod()" [disabled]="syncing()">
+      <span [class.off]="syncing()"><app-icon name="sync" class="ic" /> Sincronizar</span>
+      <span [class.off]="!syncing()"><span class="spin"></span>Sincronizando…</span>
     </button>
-    <button class="btn" (click)="importPonto()" [disabled]="importingPonto() || !hasPontoMais()">
-      @if (importingPonto()) {
-        <span class="spin"></span>Importando…
-      }
-      @if (!importingPonto()) {
-        <app-icon name="download" class="ic" />
-        Importar ponto
-      }
+    <button class="btn stable" (click)="importPonto()" [disabled]="importingPonto() || !hasPontoMais()">
+      <span [class.off]="importingPonto()"><app-icon name="download" class="ic" /> Importar ponto</span>
+      <span [class.off]="!importingPonto()"><span class="spin"></span>Importando…</span>
     </button>
   </div>
 </header>
