@@ -16,22 +16,21 @@
         <span>Histórico de worklogs</span>
       </button>
     </nav>
+    @if (update.showBanner()) {
+      <div class="update-card" role="status">
+        <b>Atualização disponível</b>
+        <div class="update-actions">
+          <button type="button" class="btn quiet small" (click)="update.dismiss()">Adiar</button>
+          <button type="button" class="btn primary small" (click)="update.install()">Atualizar</button>
+        </div>
+      </div>
+    }
+    @if (update.status().phase === "installing") {
+      <div class="update-card" role="status">
+        <b><span class="spin"></span>Instalando atualização…</b>
+      </div>
+    }
     <div class="side-foot">
-      @if (update.showBanner()) {
-        <div class="update-card" role="status">
-          <b>Versão {{ update.status().version }} disponível</b>
-          <span>O Gama será reiniciado para instalar.</span>
-          <div class="update-actions">
-            <button type="button" class="btn primary small" (click)="update.install()">Atualizar agora</button>
-            <button type="button" class="btn quiet small" (click)="update.dismiss()">Depois</button>
-          </div>
-        </div>
-      }
-      @if (update.status().phase === "installing") {
-        <div class="update-card" role="status">
-          <b><span class="spin"></span>Instalando a versão {{ update.status().version }}…</b>
-        </div>
-      }
       <button type="button" class="who" (click)="settingsDialog.show('account')">
         <b>{{ userName() }}</b>
         <span>{{ jiraInstance() }}</span>
