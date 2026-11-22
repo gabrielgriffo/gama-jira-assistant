@@ -1,5 +1,5 @@
-import { Component, EventEmitter, HostListener, Input, OnChanges, Output } from "@angular/core";
-import { CommonModule } from "@angular/common";
+import { ChangeDetectionStrategy, Component, OnChanges, computed, inject, input, output, signal } from "@angular/core";
+
 import { A11yModule } from "@angular/cdk/a11y";
 import { error } from "@tauri-apps/plugin-log";
 import { WorklogDraft } from "../../data-access/worklog";
@@ -21,64 +21,68 @@ interface DraftNote {
 
 @Component({
   selector: "app-day-worklog-preview-modal",
-  imports: [IconComponent, CommonModule, A11yModule],
+  imports: [IconComponent, A11yModule],
   templateUrl: "./day-worklog-preview-modal.component.html",
   styleUrl: "./day-worklog-preview-modal.component.css",
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  host: {
+    "(document:keydown.escape)": "onEscape()",
+  },
 })
 export class DayWorklogPreviewModalComponent implements OnChanges {
-  @Input() isOpen = false;
-  @Input() day: WorkDayTimeline | null = null;
-  @Input() drafts: WorklogDraft[] = [];
-  @Input() timeZone = "";
-  @Output() close = new EventEmitter<void>();
-  @Output() sent = new EventEmitter<void>();
+  private worklogService = inject(WorklogService);
+  private toastService = inject(ToastService);
 
-  sending = false;
-  confirming = false;
-  errors: Record<number, DraftError> = {};
-  notes: DraftNote[] = [];
-  total = 0;
-  requests = "";
+  readonly isOpen = input(false);
+  readonly day = input<WorkDayTimeline | null>(null);
+  readonly drafts = input<WorklogDraft[]>([]);
+  readonly timeZone = input("");
+  readonly close = output<void>();
+  readonly sent = output<void>();
 
-  constructor(
-    private worklogService: WorklogService,
-    private toastService: ToastService,
-  ) {}
+  readonly sending = signal(false);
+  readonly confirming = signal(false);
+  readonly errors = signal<Record<number, DraftError>>({});
+  readonly notes = signal<DraftNote[]>([]);
+  readonly total = signal(0);
+  readonly requests = signal("");
+
+  readonly title = computed(() => {
+    const day = this.day();
+    if (!day) return "";
+    const [, m, d] = day.date.split("-").map(Number);
+    return `Registrar worklogs de ${WEEKDAYS[weekday(day.date)]}, ${d} de ${MONTHS[m - 1]}`;
+  });
+
+  readonly punchSummary = computed(() => {
+    const day = this.day();
+    if (!day) return "";
+    const intervals = day.punchIntervals.map((iv) => `${this.clock(iv.start)}–${this.clock(iv.end)}`).join(", ");
+    return `Ponto: ${this.hfmt(day.totalMinutes)}${intervals ? ` (${intervals})` : ""}.`;
+  });
 
   ngOnChanges(): void {
-    if (!this.isOpen) {
-      this.confirming = false;
+    if (!this.isOpen()) {
+      this.confirming.set(false);
     }
     this.refresh();
   }
 
-  @HostListener("document:keydown.escape")
   onEscape(): void {
-    if (this.isOpen) this.onClose();
+    if (this.isOpen()) this.onClose();
   }
 
   get toSend(): WorklogDraft[] {
-    return this.drafts.filter((d) => d.state === "pending" || d.state === "failed");
+    return this.drafts().filter((d) => d.state === "pending" || d.state === "failed");
   }
 
   get allSent(): boolean {
-    return this.drafts.length > 0 && this.drafts.every((d) => d.state === "sent");
+    const drafts = this.drafts();
+    return drafts.length > 0 && drafts.every((d) => d.state === "sent");
   }
 
   get hasErrors(): boolean {
-    return Object.keys(this.errors).length > 0;
-  }
-
-  get title(): string {
-    if (!this.day) return "";
-    const [, m, d] = this.day.date.split("-").map(Number);
-    return `Registrar worklogs de ${WEEKDAYS[weekday(this.day.date)]}, ${d} de ${MONTHS[m - 1]}`;
-  }
-
-  get punchSummary(): string {
-    if (!this.day) return "";
-    const intervals = this.day.punchIntervals.map((iv) => `${this.clock(iv.start)}–${this.clock(iv.end)}`).join(", ");
-    return `Ponto: ${this.hfmt(this.day.totalMinutes)}${intervals ? ` (${intervals})` : ""}.`;
+    return Object.keys(this.errors()).length > 0;
   }
 
   worklogLabel(count: number): string {
@@ -86,28 +90,29 @@ export class DayWorklogPreviewModalComponent implements OnChanges {
   }
 
   isLocked(draft: WorklogDraft): boolean {
-    return this.sending || this.confirming || draft.state === "sent" || draft.state === "sending";
+    return this.sending() || this.confirming() || draft.state === "sent" || draft.state === "sending";
   }
 
   rowError(draft: WorklogDraft): string {
-    return this.errors[draft.id]?.text || (draft.state === "failed" && draft.error ? draft.error : "");
+    return this.errors()[draft.id]?.text || (draft.state === "failed" && draft.error ? draft.error : "");
   }
 
   badStart(draft: WorklogDraft): boolean {
-    return this.errors[draft.id]?.field === "start";
+    return this.errors()[draft.id]?.field === "start";
   }
 
   badDuration(draft: WorklogDraft): boolean {
-    return this.errors[draft.id]?.field === "duration";
+    return this.errors()[draft.id]?.field === "duration";
   }
 
   badComment(draft: WorklogDraft): boolean {
-    return this.errors[draft.id]?.field === "comment";
+    return this.errors()[draft.id]?.field === "comment";
   }
 
   onStartInput(draft: WorklogDraft, value: string): void {
     if (!value) {
       draft.start = NaN;
+      draft.startText = "";
     } else {
       const [h, m] = value.split(":").map(Number);
       draft.start = h * 60 + m;
@@ -132,46 +137,43 @@ export class DayWorklogPreviewModalComponent implements OnChanges {
   }
 
   removeDraft(draft: WorklogDraft): void {
-    const index = this.drafts.indexOf(draft);
-    if (index >= 0) this.drafts.splice(index, 1);
+    const drafts = this.drafts();
+    const index = drafts.indexOf(draft);
+    if (index >= 0) drafts.splice(index, 1);
     this.refresh();
   }
 
   askSend(): void {
     if (this.hasErrors || !this.toSend.length) return;
-    this.confirming = true;
+    this.confirming.set(true);
   }
 
   cancelSend(): void {
-    this.confirming = false;
+    this.confirming.set(false);
   }
 
   async confirmSend(): Promise<void> {
     this.refresh();
     if (this.hasErrors || !this.toSend.length) {
-      this.confirming = false;
+      this.confirming.set(false);
       return;
     }
     await this.send(this.toSend);
   }
 
   async retry(draft: WorklogDraft): Promise<void> {
-    if (this.errors[draft.id]) return;
+    if (this.errors()[draft.id]) return;
     await this.send([draft]);
   }
 
   onClose(): void {
-    if (this.sending) return;
-    this.confirming = false;
+    if (this.sending()) return;
+    this.confirming.set(false);
     this.close.emit();
   }
 
   onBackdropClick(event: MouseEvent): void {
     if (event.target === event.currentTarget) this.onClose();
-  }
-
-  trackDraft(_: number, draft: WorklogDraft): number {
-    return draft.id;
   }
 
   hfmt(minutes: number): string {
@@ -189,9 +191,9 @@ export class DayWorklogPreviewModalComponent implements OnChanges {
   }
 
   private async send(drafts: WorklogDraft[]): Promise<void> {
-    if (this.sending || !drafts.length) return;
-    this.sending = true;
-    this.confirming = false;
+    if (this.sending() || !drafts.length) return;
+    this.sending.set(true);
+    this.confirming.set(false);
 
     let ok = 0;
     let failed = 0;
@@ -228,7 +230,7 @@ export class DayWorklogPreviewModalComponent implements OnChanges {
       this.refresh();
     }
 
-    this.sending = false;
+    this.sending.set(false);
     this.refresh();
 
     if (failed) {
@@ -242,33 +244,32 @@ export class DayWorklogPreviewModalComponent implements OnChanges {
   }
 
   private refresh(): void {
-    this.errors = this.validate();
-    this.total = this.drafts.filter((d) => Number.isFinite(d.duration)).reduce((sum, d) => sum + d.duration, 0);
-    this.notes = this.buildNotes();
-    this.requests = this.buildRequests();
-  }
-
-  private validate(): Record<number, DraftError> {
-    return validateDrafts(this.drafts, this.timeZone);
+    const drafts = this.drafts();
+    this.errors.set(validateDrafts(drafts, this.timeZone()));
+    this.total.set(drafts.filter((d) => Number.isFinite(d.duration)).reduce((sum, d) => sum + d.duration, 0));
+    this.notes.set(this.buildNotes());
+    this.requests.set(this.buildRequests());
   }
 
   private buildNotes(): DraftNote[] {
-    if (!this.day) return [];
+    const day = this.day();
+    if (!day) return [];
     const notes: DraftNote[] = [];
-    const otherRegistered = minutesRegisteredElsewhere(this.day, this.drafts);
+    const total = this.total();
+    const otherRegistered = minutesRegisteredElsewhere(day, this.drafts());
     if (otherRegistered > 0) {
       notes.push({
         kind: "info",
         text: `Este dia já possui ${this.hfmt(otherRegistered)} registradas no Jira. Verifique se o mesmo trabalho não será registrado em duplicidade.`,
       });
     }
-    if (this.total > this.day.totalMinutes) {
+    if (total > day.totalMinutes) {
       notes.push({
         kind: "",
-        text: `O total dos worklogs (${this.hfmt(this.total)}) excede o ponto do dia (${this.hfmt(this.day.totalMinutes)}).`,
+        text: `O total dos worklogs (${this.hfmt(total)}) excede o ponto do dia (${this.hfmt(day.totalMinutes)}).`,
       });
     }
-    const count = Object.keys(this.errors).length;
+    const count = Object.keys(this.errors()).length;
     if (count) {
       notes.push({
         kind: "err",
@@ -284,7 +285,7 @@ export class DayWorklogPreviewModalComponent implements OnChanges {
     return pending
       .map((d) => {
         const body: Record<string, unknown> = {
-          started: `${d.date}T${this.clock(d.start)}:00.000${jiraOffset(d.date, d.start, this.timeZone)}`,
+          started: `${d.date}T${this.clock(d.start)}:00.000${jiraOffset(d.date, d.start, this.timeZone())}`,
           timeSpentSeconds: Number.isFinite(d.duration) ? d.duration * 60 : null,
         };
         const comment = d.comment.trim();

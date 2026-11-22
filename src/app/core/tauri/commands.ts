@@ -108,3 +108,7 @@ export const preferencesCommands = {
 export const windowCommands = {
   showMain: () => invoke<void>("show_main_window"),
 };
+
+export const linkCommands = {
+  openJiraUrl: (url: string) => invoke<void>("open_jira_url", { url }),
+};

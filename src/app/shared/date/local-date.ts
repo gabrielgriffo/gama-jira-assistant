@@ -6,6 +6,10 @@ export interface DateRange {
   to: LocalDate;
 }
 
+export function sameDates(a: DateRange | null, b: DateRange | null): boolean {
+  return !!a && !!b && a.from === b.from && a.to === b.to;
+}
+
 const DAY_MS = 86_400_000;
 const MONTHS = [
   "janeiro",

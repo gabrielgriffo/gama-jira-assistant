@@ -1,6 +1,6 @@
-import { Component, OnInit, computed, inject } from "@angular/core";
+import { ChangeDetectionStrategy, Component, OnInit, computed, inject } from "@angular/core";
 import { RouterOutlet, RouterLink, RouterLinkActive } from "@angular/router";
-import { CommonModule } from "@angular/common";
+
 import { JiraStateService } from "./core/auth/jira-state.service";
 import { PontoMaisStateService } from "./core/pontomais/pontomais-state.service";
 import { SyncStateService } from "./core/sync/sync-state.service";
@@ -19,13 +19,13 @@ import { UpdateService } from "./core/update/update.service";
     RouterOutlet,
     RouterLink,
     RouterLinkActive,
-    CommonModule,
     TitlebarComponent,
     SettingsDialogComponent,
     ToastComponent,
   ],
   templateUrl: "./app.component.html",
   styleUrl: "./app.component.css",
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AppComponent implements OnInit {
   private jiraStateService = inject(JiraStateService);

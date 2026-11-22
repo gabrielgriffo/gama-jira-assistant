@@ -2,6 +2,7 @@ import { effect, inject, Injectable, signal } from "@angular/core";
 import { error } from "@tauri-apps/plugin-log";
 import { JiraStateService } from "../auth/jira-state.service";
 import { JiraStatus, statusCommands } from "../tauri";
+import { LatestOnly } from "../../shared/async/latest-only";
 
 @Injectable({
   providedIn: "root",
@@ -10,6 +11,7 @@ export class StatusCatalogStore {
   private readonly _statuses = signal<JiraStatus[]>([]);
   private readonly _syncedAt = signal<string | null>(null);
   private lastConnected: boolean | null = null;
+  private readonly loads = new LatestOnly();
 
   readonly statuses = this._statuses.asReadonly();
   readonly syncedAt = this._syncedAt.asReadonly();
@@ -26,11 +28,13 @@ export class StatusCatalogStore {
   }
 
   async load(): Promise<void> {
+    const isCurrent = this.loads.begin();
     try {
       const [statuses, syncedAt] = await Promise.all([
         statusCommands.getCatalog(),
         statusCommands.getCatalogSyncedAt(),
       ]);
+      if (!isCurrent()) return;
       this._statuses.set(statuses);
       this._syncedAt.set(syncedAt);
     } catch (err) {

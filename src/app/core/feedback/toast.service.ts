@@ -1,5 +1,4 @@
-import { Injectable } from "@angular/core";
-import { BehaviorSubject } from "rxjs";
+import { Injectable, signal } from "@angular/core";
 
 export interface ToastMessage {
   message: string;
@@ -11,17 +10,13 @@ export interface ToastMessage {
   providedIn: "root",
 })
 export class ToastService {
-  private toasts: ToastMessage[] = [];
-  public toasts$ = new BehaviorSubject<ToastMessage[]>([]);
+  private readonly _toasts = signal<readonly ToastMessage[]>([]);
+  readonly toasts = this._toasts.asReadonly();
 
   show(message: string, type: "success" | "error" | "info" = "info", duration = 3000) {
     const toast: ToastMessage = { message, type, duration };
-    this.toasts.push(toast);
-    this.toasts$.next([...this.toasts]);
-
-    setTimeout(() => {
-      this.remove(toast);
-    }, duration);
+    this._toasts.update((toasts) => [...toasts, toast]);
+    setTimeout(() => this.remove(toast), duration);
   }
 
   success(message: string, duration = 3000) {
@@ -33,7 +28,6 @@ export class ToastService {
   }
 
   private remove(toast: ToastMessage) {
-    this.toasts = this.toasts.filter((t) => t !== toast);
-    this.toasts$.next([...this.toasts]);
+    this._toasts.update((toasts) => toasts.filter((t) => t !== toast));
   }
 }

@@ -1,4 +1,4 @@
-import { Injectable, signal } from "@angular/core";
+import { Injectable, signal, inject } from "@angular/core";
 import { error as logError } from "@tauri-apps/plugin-log";
 import { PontoMaisService, PontoMaisStatus } from "./pontomais.service";
 
@@ -19,13 +19,13 @@ const EMPTY_STATE: PontoMaisState = {
   providedIn: "root",
 })
 export class PontoMaisStateService {
+  private readonly pontoMaisService = inject(PontoMaisService);
+
   private readonly storageKey = "pontomais-state";
 
   private readonly _state = signal<PontoMaisState>(EMPTY_STATE);
 
   readonly state = this._state.asReadonly();
-
-  constructor(private readonly pontoMaisService: PontoMaisService) {}
 
   initialize(): void {
     const cached = this.loadCache();

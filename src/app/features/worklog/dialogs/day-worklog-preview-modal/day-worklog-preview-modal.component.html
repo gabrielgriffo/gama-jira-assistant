@@ -1,141 +1,155 @@
-<div class="overlay" animate.leave="modal-leave" *ngIf="isOpen && day" (click)="onBackdropClick($event)">
-  <div
-    class="dialog wide"
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="dlg-title"
-    cdkTrapFocus
-    [cdkTrapFocusAutoCapture]="true"
-  >
-    <div class="dialog-head">
-      <div>
-        <h2 id="dlg-title">{{ title }}</h2>
-        <p>{{ punchSummary }} Os horários sugeridos acompanham as marcações de ponto e não se sobrepõem.</p>
-      </div>
-      <button class="icon-btn lg" (click)="onClose()" [disabled]="sending" aria-label="Fechar">
-        <app-icon name="close" class="ic" />
-      </button>
-    </div>
-
-    <div class="dialog-body scroll-fade">
-      <div
-        class="note"
-        *ngFor="let note of notes"
-        [class.info]="note.kind === 'info'"
-        [class.err]="note.kind === 'err'"
-      >
-        {{ note.text }}
-      </div>
-
-      <div class="scroll-x" *ngIf="drafts.length > 0">
-        <div class="drafts">
-          <div class="draft-row hd-row">
-            <span class="hd">Issue</span>
-            <span class="hd">Início</span>
-            <span class="hd">Duração</span>
-            <span class="hd">Comentário</span>
-            <span class="hd">Situação</span>
-            <span></span>
-          </div>
-          <div class="draft-row" *ngFor="let draft of drafts; trackBy: trackDraft">
-            <div class="iss">
-              <b>{{ draft.issueKey }}</b>
-              <span>{{ draft.issueSummary }}</span>
-            </div>
-            <input
-              autocomplete="off"
-              class="sm"
-              type="time"
-              [value]="startText(draft)"
-              [disabled]="isLocked(draft)"
-              [class.bad]="badStart(draft)"
-              (input)="onStartInput(draft, $any($event.target).value)"
-              [attr.aria-label]="'Início ' + draft.issueKey"
-            />
-            <input
-              autocomplete="off"
-              class="sm"
-              type="text"
-              inputmode="numeric"
-              placeholder="h:mm"
-              [value]="draft.durationRaw"
-              [disabled]="isLocked(draft)"
-              [class.bad]="badDuration(draft)"
-              (input)="onDurationInput(draft, $any($event.target).value)"
-              [attr.aria-label]="'Duração ' + draft.issueKey"
-            />
-            <input
-              autocomplete="off"
-              class="sm"
-              type="text"
-              placeholder="Opcional"
-              [value]="draft.comment"
-              [disabled]="isLocked(draft)"
-              [class.bad]="badComment(draft)"
-              (input)="onCommentInput(draft, $any($event.target).value)"
-              [attr.aria-label]="'Comentário ' + draft.issueKey"
-            />
-            <div [ngSwitch]="draft.state">
-              <span class="st sending" *ngSwitchCase="'sending'"><span class="spin"></span>Enviando…</span>
-              <ng-container *ngSwitchCase="'failed'">
-                <button class="btn" *ngIf="!sending" (click)="retry(draft)" [disabled]="!!errors[draft.id]">
-                  Reenviar
-                </button>
-                <span class="st failed" *ngIf="sending"><span class="dot"></span>Falha</span>
-              </ng-container>
-              <span class="st sent" *ngSwitchCase="'sent'"><span class="dot"></span>Enviado</span>
-              <span class="st" *ngSwitchDefault><span class="dot"></span>Rascunho</span>
-            </div>
-            <button
-              class="icon-btn plain"
-              (click)="removeDraft(draft)"
-              [disabled]="isLocked(draft)"
-              [attr.aria-label]="'Excluir rascunho de ' + draft.issueKey"
-            >
-              <app-icon name="close" class="ic" />
-            </button>
-            <div class="row-err">{{ rowError(draft) }}</div>
-          </div>
+@if (isOpen() && day()) {
+  <div class="overlay" animate.leave="modal-leave" (click)="onBackdropClick($event)">
+    <div
+      class="dialog wide"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="dlg-title"
+      cdkTrapFocus
+      [cdkTrapFocusAutoCapture]="true"
+    >
+      <div class="dialog-head">
+        <div>
+          <h2 id="dlg-title">{{ title() }}</h2>
+          <p>{{ punchSummary() }} Os horários sugeridos acompanham as marcações de ponto e não se sobrepõem.</p>
         </div>
-      </div>
-
-      <div class="empty" *ngIf="drafts.length === 0">Nenhum rascunho para este dia.</div>
-
-      <details class="reqs">
-        <summary>Visualizar as requisições que serão enviadas</summary>
-        <pre>{{ requests }}</pre>
-      </details>
-    </div>
-
-    <div class="dialog-foot">
-      <div class="confirm" *ngIf="confirming">
-        <span
-          >Confirma o envio de {{ worklogLabel(toSend.length) }} ao Jira? Esta ação não pode ser desfeita pelo
-          Gama.</span
-        >
-        <button class="btn quiet" (click)="cancelSend()">Voltar</button>
-        <button class="btn launch" (click)="confirmSend()" [disabled]="hasErrors">
-          <app-icon name="send" class="ic" />
-          Confirmar envio
+        <button class="icon-btn lg" (click)="onClose()" [disabled]="sending()" aria-label="Fechar">
+          <app-icon name="close" class="ic" />
         </button>
       </div>
-
-      <ng-container *ngIf="!confirming && allSent">
-        <span class="grow">Todos os worklogs do dia foram enviados.</span>
-        <button class="btn primary" (click)="onClose()">Fechar</button>
-      </ng-container>
-
-      <ng-container *ngIf="!confirming && !allSent">
-        <span class="grow">Total: {{ hfmt(total) }} de {{ hfmt(day.totalMinutes) }} registradas no ponto</span>
-        <button class="btn" (click)="onClose()" [disabled]="sending">Salvar rascunhos e fechar</button>
-        <button class="btn launch" (click)="askSend()" [disabled]="sending || hasErrors || toSend.length === 0">
-          <ng-container *ngIf="sending"><span class="spin"></span>Enviando…</ng-container>
-          <ng-container *ngIf="!sending">
-            <app-icon name="send" class="ic" />
-            Enviar {{ worklogLabel(toSend.length) }}
-          </ng-container>
-        </button>
-      </ng-container>
+      <div class="dialog-body scroll-fade">
+        @for (note of notes(); track $index) {
+          <div class="note" [class.info]="note.kind === 'info'" [class.err]="note.kind === 'err'">
+            {{ note.text }}
+          </div>
+        }
+        @if (drafts().length > 0) {
+          <div class="scroll-x">
+            <div class="drafts">
+              <div class="draft-row hd-row">
+                <span class="hd">Issue</span>
+                <span class="hd">Início</span>
+                <span class="hd">Duração</span>
+                <span class="hd">Comentário</span>
+                <span class="hd">Situação</span>
+                <span></span>
+              </div>
+              @for (draft of drafts(); track draft.id) {
+                <div class="draft-row">
+                  <div class="iss">
+                    <b>{{ draft.issueKey }}</b>
+                    <span>{{ draft.issueSummary }}</span>
+                  </div>
+                  <input
+                    autocomplete="off"
+                    class="sm"
+                    type="time"
+                    [value]="startText(draft)"
+                    [disabled]="isLocked(draft)"
+                    [class.bad]="badStart(draft)"
+                    (input)="onStartInput(draft, $any($event.target).value)"
+                    [attr.aria-label]="'Início ' + draft.issueKey"
+                  />
+                  <input
+                    autocomplete="off"
+                    class="sm"
+                    type="text"
+                    inputmode="numeric"
+                    placeholder="h:mm"
+                    [value]="draft.durationRaw"
+                    [disabled]="isLocked(draft)"
+                    [class.bad]="badDuration(draft)"
+                    (input)="onDurationInput(draft, $any($event.target).value)"
+                    [attr.aria-label]="'Duração ' + draft.issueKey"
+                  />
+                  <input
+                    autocomplete="off"
+                    class="sm"
+                    type="text"
+                    placeholder="Opcional"
+                    [value]="draft.comment"
+                    [disabled]="isLocked(draft)"
+                    [class.bad]="badComment(draft)"
+                    (input)="onCommentInput(draft, $any($event.target).value)"
+                    [attr.aria-label]="'Comentário ' + draft.issueKey"
+                  />
+                  <div>
+                    @switch (draft.state) {
+                      @case ("sending") {
+                        <span class="st sending"><span class="spin"></span>Enviando…</span>
+                      }
+                      @case ("failed") {
+                        @if (!sending()) {
+                          <button class="btn" (click)="retry(draft)" [disabled]="!!errors()[draft.id]">Reenviar</button>
+                        }
+                        @if (sending()) {
+                          <span class="st failed"><span class="dot"></span>Falha</span>
+                        }
+                      }
+                      @case ("sent") {
+                        <span class="st sent"><span class="dot"></span>Enviado</span>
+                      }
+                      @default {
+                        <span class="st"><span class="dot"></span>Rascunho</span>
+                      }
+                    }
+                  </div>
+                  <button
+                    class="icon-btn plain"
+                    (click)="removeDraft(draft)"
+                    [disabled]="isLocked(draft)"
+                    [attr.aria-label]="'Excluir rascunho de ' + draft.issueKey"
+                  >
+                    <app-icon name="close" class="ic" />
+                  </button>
+                  <div class="row-err">{{ rowError(draft) }}</div>
+                </div>
+              }
+            </div>
+          </div>
+        }
+        @if (drafts().length === 0) {
+          <div class="empty">Nenhum rascunho para este dia.</div>
+        }
+        <details class="reqs">
+          <summary>Visualizar as requisições que serão enviadas</summary>
+          <pre>{{ requests() }}</pre>
+        </details>
+      </div>
+      <div class="dialog-foot">
+        @if (confirming()) {
+          <div class="confirm">
+            <span
+              >Confirma o envio de {{ worklogLabel(toSend.length) }} ao Jira? Esta ação não pode ser desfeita pelo
+              Gama.</span
+            >
+            <button class="btn quiet" (click)="cancelSend()">Voltar</button>
+            <button class="btn launch" (click)="confirmSend()" [disabled]="hasErrors">
+              <app-icon name="send" class="ic" />
+              Confirmar envio
+            </button>
+          </div>
+        }
+        @if (!confirming() && allSent) {
+          <span class="grow">Todos os worklogs do dia foram enviados.</span>
+          <button class="btn primary" (click)="onClose()">Fechar</button>
+        }
+        @if (!confirming() && !allSent) {
+          <span class="grow"
+            >Total: {{ hfmt(total()) }} de {{ hfmt(day()?.totalMinutes ?? 0) }} registradas no ponto</span
+          >
+          <button class="btn" (click)="onClose()" [disabled]="sending()">Salvar rascunhos e fechar</button>
+          <button class="btn launch" (click)="askSend()" [disabled]="sending() || hasErrors || toSend.length === 0">
+            @if (sending()) {
+              <span class="spin"></span>Enviando…
+            }
+            @if (!sending()) {
+              <app-icon name="send" class="ic" />
+              Enviar {{ worklogLabel(toSend.length) }}
+            }
+          </button>
+        }
+      </div>
     </div>
   </div>
-</div>
+}

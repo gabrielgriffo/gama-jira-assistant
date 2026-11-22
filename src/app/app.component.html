@@ -1,4 +1,4 @@
-<app-titlebar></app-titlebar>
+<app-titlebar />
 <div class="app">
   <aside class="side" aria-label="Navegação">
     <nav class="nav">
@@ -40,11 +40,13 @@
   </aside>
   <main id="main">
     <div class="main-inner">
-      <router-outlet></router-outlet>
+      <router-outlet />
     </div>
   </main>
 </div>
 @if (settingsDialog.open()) {
-  <app-settings-dialog animate.leave="modal-leave" (close)="settingsDialog.hide()" />
+  @defer (on immediate) {
+    <app-settings-dialog animate.leave="modal-leave" (close)="settingsDialog.hide()" />
+  }
 }
 <app-toast />

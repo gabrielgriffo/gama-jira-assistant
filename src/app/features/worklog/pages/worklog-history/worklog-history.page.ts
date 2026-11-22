@@ -1,22 +1,35 @@
-import { Component, OnDestroy, OnInit, effect, inject } from "@angular/core";
-import { CommonModule } from "@angular/common";
-import { FormsModule } from "@angular/forms";
-import { RouterModule } from "@angular/router";
+import {
+  ChangeDetectionStrategy,
+  Component,
+  OnDestroy,
+  OnInit,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+} from "@angular/core";
 import { error } from "@tauri-apps/plugin-log";
-import { openUrl } from "@tauri-apps/plugin-opener";
 import { JiraWorklogService } from "../../data-access/jira-worklog.service";
 import { PontoMaisService } from "../../../../core/pontomais/pontomais.service";
 import { JiraWorklog, JiraWorklogHistoryResponse } from "../../data-access/jira-worklog";
 import { ToastService } from "../../../../core/feedback/toast.service";
 import { DateRangePickerComponent } from "../../../../shared/ui/date-range-picker/date-range-picker.component";
-import { addDays, relativeDateTime, todayIn, weekday, zonedDateTime } from "../../../../shared/date/local-date";
+import {
+  addDays,
+  relativeDateTime,
+  sameDates,
+  todayIn,
+  weekday,
+  zonedDateTime,
+} from "../../../../shared/date/local-date";
 import { RangeSelection, WORKLOG_HISTORY_PRESETS } from "../../../../shared/date/range-presets";
 import { AppSettingsService } from "../../../../core/preferences/app-settings.service";
 import { rangeSyncKey, SyncStateService } from "../../../../core/sync/sync-state.service";
 import { IconComponent } from "../../../../shared/ui/icon/icon.component";
 import { monthGroups, type MonthGroup } from "./month-groups";
 import { sortByLastChange } from "../../../../shared/sort/last-change";
-import { isMissingCredentials } from "../../../../core/tauri";
+import { isMissingCredentials, linkCommands } from "../../../../core/tauri";
 import { LatestOnly } from "../../../../shared/async/latest-only";
 import { changeTracker } from "../../../../shared/async/change-tracker";
 import { LocalDataService } from "../../../../core/sync/local-data.service";
@@ -55,71 +68,73 @@ interface GridRow {
 
 @Component({
   selector: "app-worklog-history",
-  imports: [IconComponent, CommonModule, FormsModule, RouterModule, DateRangePickerComponent],
+  imports: [IconComponent, DateRangePickerComponent],
   templateUrl: "./worklog-history.page.html",
   styleUrl: "./worklog-history.page.css",
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class WorklogHistoryPage implements OnInit, OnDestroy {
+  private jiraWorklogService = inject(JiraWorklogService);
+  private pontoMaisService = inject(PontoMaisService);
+  private toastService = inject(ToastService);
+
   readonly presets = WORKLOG_HISTORY_PRESETS;
 
   private readonly settings = inject(AppSettingsService);
-  get timeZone(): string {
-    return this.settings.timeZone;
-  }
-  range: RangeSelection = this.settings.range("worklogHistory", "month", this.presets);
-  loading = false;
-  response: JiraWorklogHistoryResponse | null = null;
-  viewMode: "grid" | "day" = "grid";
+  private readonly syncState = inject(SyncStateService);
 
-  days: HistoryDay[] = [];
-  gridDays: string[] = [];
-  gridMonths: MonthGroup[] = [];
-  gridRows: GridRow[] = [];
-  registeredMinutes = 0;
-  pontoMinutes = 0;
-  pontoDays = 0;
-  pendingDays = 0;
-  difference = 0;
-  gridColumns: GridColumn[] = [];
-  syncedLabel = "";
-  loadError = "";
-  pontoError = false;
-  differenceLabel = "Diferença";
+  readonly timeZone = computed(() => this.settings.timeZone);
+  readonly today = this.settings.today;
+  readonly range = signal<RangeSelection>(this.settings.range("worklogHistory", "month", this.presets));
+  readonly loading = signal(false);
+  readonly response = signal<JiraWorklogHistoryResponse | null>(null);
+  readonly viewMode = signal<"grid" | "day">("grid");
+
+  readonly days = signal<HistoryDay[]>([]);
+  readonly gridMonths = signal<MonthGroup[]>([]);
+  readonly gridRows = signal<GridRow[]>([]);
+  readonly registeredMinutes = signal(0);
+  readonly worklogCount = signal(0);
+  readonly pontoMinutes = signal(0);
+  readonly pontoDays = signal(0);
+  readonly pendingDays = signal(0);
+  readonly difference = signal(0);
+  readonly gridColumns = signal<GridColumn[]>([]);
+  readonly syncedLabel = signal("");
+  readonly loadError = signal("");
+  readonly pontoError = signal(false);
+  readonly differenceLabel = signal("Diferença");
+  readonly syncing = computed(() => this.syncState.isRangeSyncing("worklogs", this.range()));
 
   private pontoByDay = new Map<string, number>();
   private readonly loads = new LatestOnly();
   private loadedRange: RangeSelection | null = null;
   private unlistenSyncFinished?: () => void;
-  private readonly syncState = inject(SyncStateService);
 
-  constructor(
-    private jiraWorklogService: JiraWorklogService,
-    private pontoMaisService: PontoMaisService,
-    private toastService: ToastService,
-  ) {
+  constructor() {
     const localData = inject(LocalDataService);
     const sessionChanged = changeTracker<string>();
     effect(() => {
       if (!sessionChanged(localData.sessionKey())) return;
-      this.loads.begin();
-      this.response = null;
-      this.days = [];
-      this.gridRows = [];
-      this.gridColumns = [];
-      this.loadedRange = null;
-      this.loadError = "";
-      this.loadWorklogs();
-      this.syncWorklogs(false);
+      untracked(() => this.resetAndReload());
     });
   }
 
-  get syncing(): boolean {
-    return this.syncState.isRangeSyncing("worklogs", this.range);
+  private resetAndReload(): void {
+    this.loads.begin();
+    this.response.set(null);
+    this.days.set([]);
+    this.gridRows.set([]);
+    this.gridColumns.set([]);
+    this.loadedRange = null;
+    this.loadError.set("");
+    this.loadWorklogs();
+    this.syncWorklogs(false);
   }
 
   async ngOnInit(): Promise<void> {
     this.unlistenSyncFinished = this.syncState.onFinished((key) => {
-      if (key === rangeSyncKey("worklogs", this.range)) {
+      if (key === rangeSyncKey("worklogs", this.range())) {
         this.loadWorklogs();
       }
     });
@@ -132,16 +147,16 @@ export class WorklogHistoryPage implements OnInit, OnDestroy {
   }
 
   async applyRange(range: RangeSelection): Promise<void> {
-    this.range = range;
+    this.range.set(range);
     this.settings.saveRange("worklogHistory", range, this.presets);
     await this.loadWorklogs();
     await this.syncWorklogs(false);
   }
 
   async syncWorklogs(notify = true): Promise<void> {
-    if (this.syncing) return;
+    if (this.syncing()) return;
     try {
-      const synced = await this.jiraWorklogService.syncWorklogs(this.range.from, this.range.to, notify);
+      const synced = await this.jiraWorklogService.syncWorklogs(this.range().from, this.range().to, notify);
       if (synced !== null && notify) {
         this.toastService.success(`${synced} worklog(s) sincronizado(s).`);
       }
@@ -154,9 +169,9 @@ export class WorklogHistoryPage implements OnInit, OnDestroy {
   }
 
   async loadWorklogs(): Promise<void> {
-    const range = this.range;
+    const range = this.range();
     const isCurrent = this.loads.begin();
-    const showLoading = this.response ? undefined : setTimeout(() => (this.loading = true), LOADING_DELAY_MS);
+    const showLoading = this.response() ? undefined : setTimeout(() => this.loading.set(true), LOADING_DELAY_MS);
     let pontoFailed = false;
     try {
       const [response, timeline] = await Promise.all([
@@ -168,12 +183,12 @@ export class WorklogHistoryPage implements OnInit, OnDestroy {
         }),
       ]);
       if (!isCurrent()) return;
-      if (pontoFailed && !this.pontoError) {
+      if (pontoFailed && !this.pontoError()) {
         this.toastService.error("Não foi possível carregar as marcações de ponto do período.");
       }
-      this.pontoError = pontoFailed;
-      this.response = response;
-      this.loadError = "";
+      this.pontoError.set(pontoFailed);
+      this.response.set(response);
+      this.loadError.set("");
       this.loadedRange = range;
       this.pontoByDay = new Map(timeline.map((day) => [day.date, day.totalMinutes]));
       this.buildView(response, range);
@@ -181,53 +196,55 @@ export class WorklogHistoryPage implements OnInit, OnDestroy {
       if (!isCurrent()) return;
       error(`failed to load worklogs: ${err}`);
       this.toastService.error(`Não foi possível carregar os worklogs: ${err}`);
-      if (this.loadedRange !== range) {
-        this.response = null;
-        this.days = [];
-        this.gridRows = [];
-        this.gridColumns = [];
-        this.loadError = "Não foi possível carregar os worklogs do período.";
+      if (!sameDates(this.loadedRange, range)) {
+        this.response.set(null);
+        this.days.set([]);
+        this.gridRows.set([]);
+        this.gridColumns.set([]);
+        this.loadError.set("Não foi possível carregar os worklogs do período.");
       }
     } finally {
       clearTimeout(showLoading);
-      if (isCurrent()) this.loading = false;
+      if (isCurrent()) this.loading.set(false);
     }
   }
 
   private buildView(response: JiraWorklogHistoryResponse, range: RangeSelection): void {
-    const today = todayIn(this.timeZone);
+    const today = todayIn(this.timeZone());
     const lastDay = range.to < today ? range.to : today;
     const worklogsByDay = new Map(response.days.map((day) => [day.date, day.worklogs]));
 
     const allDays: string[] = [];
     for (let d = lastDay; d >= range.from; d = addDays(d, -1)) allDays.push(d);
 
-    this.days = allDays
-      .map((date) => {
-        const worklogs = worklogsByDay.get(date) ?? [];
-        const registeredMinutes = Math.round(worklogs.reduce((sum, w) => sum + w.timeSpentSeconds, 0) / 60);
-        const pontoMinutes = this.pontoByDay.get(date) ?? 0;
-        return {
-          date,
-          isToday: date === today,
-          worklogs,
-          registeredMinutes,
-          pontoMinutes,
-          zeroWorklogs: worklogs.filter((w) => this.isZero(w)).length,
-          pending: date < today && pontoMinutes - registeredMinutes > PENDING_TOLERANCE_MINUTES,
-        };
-      })
-      .filter((day) => day.worklogs.length > 0 || day.pontoMinutes > 0);
+    this.days.set(
+      allDays
+        .map((date) => {
+          const worklogs = worklogsByDay.get(date) ?? [];
+          const registeredMinutes = Math.round(worklogs.reduce((sum, w) => sum + w.timeSpentSeconds, 0) / 60);
+          const pontoMinutes = this.pontoByDay.get(date) ?? 0;
+          return {
+            date,
+            isToday: date === today,
+            worklogs,
+            registeredMinutes,
+            pontoMinutes,
+            zeroWorklogs: worklogs.filter((w) => this.isZero(w)).length,
+            pending: date < today && pontoMinutes - registeredMinutes > PENDING_TOLERANCE_MINUTES,
+          };
+        })
+        .filter((day) => day.worklogs.length > 0 || day.pontoMinutes > 0),
+    );
 
-    this.registeredMinutes = Math.round(response.totalSeconds / 60);
-    this.pontoMinutes = [...this.pontoByDay.values()].reduce((sum, m) => sum + m, 0);
-    this.pontoDays = [...this.pontoByDay.values()].filter((m) => m > 0).length;
-    this.pendingDays = this.days.filter((day) => day.pending).length;
-    this.difference = differenceBeforeToday(this.days, today);
-    this.differenceLabel = range.to >= today ? "Diferença até ontem" : "Diferença";
+    this.registeredMinutes.set(this.days().reduce((sum, day) => sum + day.registeredMinutes, 0));
+    this.worklogCount.set(this.days().reduce((sum, day) => sum + day.worklogs.length, 0));
+    this.pontoMinutes.set([...this.pontoByDay.values()].reduce((sum, m) => sum + m, 0));
+    this.pontoDays.set([...this.pontoByDay.values()].filter((m) => m > 0).length);
+    this.pendingDays.set(this.days().filter((day) => day.pending).length);
+    this.difference.set(differenceBeforeToday(this.days(), today));
+    this.differenceLabel.set(range.to >= today ? "Diferença até ontem" : "Diferença");
 
-    this.gridDays = allDays;
-    this.gridMonths = monthGroups(allDays);
+    this.gridMonths.set(monthGroups(allDays));
     const rows = new Map<string, GridRow>();
     for (const day of response.days) {
       const column = allDays.indexOf(day.date);
@@ -252,41 +269,21 @@ export class WorklogHistoryPage implements OnInit, OnDestroy {
         row.totalMinutes += minutes;
       }
     }
-    this.gridRows = sortByLastChange([...rows.values()].map((row) => ({ ...row, key: row.issueKey })));
-    this.gridColumns = gridColumns(allDays, this.gridRows, this.pontoByDay, today);
+    this.gridRows.set(sortByLastChange([...rows.values()].map((row) => ({ ...row, key: row.issueKey }))));
+    this.gridColumns.set(gridColumns(allDays, this.gridRows(), this.pontoByDay, today));
 
-    this.syncedLabel = response.lastSyncedAt
-      ? `Atualizado ${relativeDateTime(response.lastSyncedAt, this.timeZone)}`
-      : "";
+    this.syncedLabel.set(
+      response.lastSyncedAt ? `Atualizado ${relativeDateTime(response.lastSyncedAt, this.timeZone())}` : "",
+    );
   }
 
   openIssue(url: string): void {
     if (!url) return;
-    openUrl(url).catch((err) => error(`failed to open issue: ${err}`));
+    linkCommands.openJiraUrl(url).catch((err) => error(`failed to open issue: ${err}`));
   }
 
   isZero(worklog: JiraWorklog): boolean {
     return worklog.timeSpentSeconds <= 0;
-  }
-
-  trackDay(_: number, day: HistoryDay): string {
-    return day.date;
-  }
-
-  trackWorklog(_: number, worklog: JiraWorklog): string {
-    return worklog.id;
-  }
-
-  trackRow(_: number, row: GridRow): string {
-    return row.issueKey;
-  }
-
-  trackMonth(_index: number, month: MonthGroup): string {
-    return month.key;
-  }
-
-  trackIndex(index: number): number {
-    return index;
   }
 
   dayTitle(date: string): string {
@@ -304,10 +301,6 @@ export class WorklogHistoryPage implements OnInit, OnDestroy {
 
   isWeekend(date: string): boolean {
     return isWeekendDate(date);
-  }
-
-  trackColumn(_: number, column: GridColumn): string {
-    return column.date;
   }
 
   cellAlpha(minutes: number): string {
@@ -332,10 +325,10 @@ export class WorklogHistoryPage implements OnInit, OnDestroy {
   }
 
   timeRange(worklog: JiraWorklog): string {
-    const start = zonedDateTime(worklog.started, this.timeZone);
+    const start = zonedDateTime(worklog.started, this.timeZone());
     const end = zonedDateTime(
       new Date(new Date(worklog.started).getTime() + worklog.timeSpentSeconds * 1000).toISOString(),
-      this.timeZone,
+      this.timeZone(),
     );
     if (!start || !end) return "";
     return `${start.time}–${end.time}`;

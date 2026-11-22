@@ -1,21 +1,21 @@
-import { Component } from "@angular/core";
-import { CommonModule } from "@angular/common";
-import { ToastService, ToastMessage } from "../../../core/feedback/toast.service";
+import { ChangeDetectionStrategy, Component, inject } from "@angular/core";
+import { ToastService } from "../../../core/feedback/toast.service";
 
 @Component({
   selector: "app-toast",
-  imports: [CommonModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="toast-container">
-      <div
-        *ngFor="let toast of toasts$ | async"
-        class="toast"
-        [class.toast-success]="toast.type === 'success'"
-        [class.toast-error]="toast.type === 'error'"
-        [class.toast-info]="toast.type === 'info'"
-      >
-        {{ toast.message }}
-      </div>
+      @for (toast of toasts(); track toast) {
+        <div
+          class="toast"
+          [class.toast-success]="toast.type === 'success'"
+          [class.toast-error]="toast.type === 'error'"
+          [class.toast-info]="toast.type === 'info'"
+        >
+          {{ toast.message }}
+        </div>
+      }
     </div>
   `,
   styles: [
@@ -66,9 +66,5 @@ import { ToastService, ToastMessage } from "../../../core/feedback/toast.service
   ],
 })
 export class ToastComponent {
-  toasts$;
-
-  constructor(private toastService: ToastService) {
-    this.toasts$ = toastService.toasts$;
-  }
+  readonly toasts = inject(ToastService).toasts;
 }

@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit, inject, signal } from "@angular/core";
+import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, inject, signal } from "@angular/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import type { UnlistenFn } from "@tauri-apps/api/event";
 import { SettingsDialogService } from "../../../features/settings/settings-dialog.service";
@@ -10,6 +10,7 @@ import { leftSlop, topOverlay } from "./overlay-dismiss";
   imports: [IconComponent],
   templateUrl: "./titlebar.component.html",
   styleUrl: "./titlebar.component.css",
+  changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     "[class.mac]": "isMac",
     "(click)": "onClick($event)",
@@ -40,7 +41,7 @@ export class TitlebarComponent implements OnInit, OnDestroy {
   }
 
   onClick(event: MouseEvent) {
-    if (this.inDragRegion(event)) return;
+    if (this.inDragRegion(event) || this.onWindowButton(event)) return;
     this.dismissOverlay();
   }
 
@@ -60,6 +61,10 @@ export class TitlebarComponent implements OnInit, OnDestroy {
       types.forEach((type) => document.removeEventListener(type, finish, true));
       this.stopPending = undefined;
     };
+  }
+
+  private onWindowButton(event: Event): boolean {
+    return event.target instanceof Element && !!event.target.closest(".controls, .actions");
   }
 
   private inDragRegion(event: Event): boolean {

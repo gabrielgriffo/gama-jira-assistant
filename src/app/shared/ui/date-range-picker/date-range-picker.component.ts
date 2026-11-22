@@ -24,6 +24,7 @@ import { IconComponent } from "../icon/icon.component";
 export class DateRangePickerComponent {
   readonly value = input.required<RangeSelection>();
   readonly timeZone = input.required<string>();
+  readonly currentDay = input<LocalDate | null>(null);
   readonly presets = input<RangePreset[]>(DEFAULT_RANGE_PRESETS);
   readonly minMonth = input<YearMonth | null>(null);
   readonly applyText = input("Aplicar");
@@ -36,7 +37,9 @@ export class DateRangePickerComponent {
 
   protected readonly datesLabel = computed(() => rangeLabel(this.value()));
   protected readonly label = computed(
-    () => selectedPreset(this.value(), todayIn(this.timeZone()), this.presets())?.label ?? this.datesLabel(),
+    () =>
+      selectedPreset(this.value(), this.currentDay() ?? todayIn(this.timeZone()), this.presets())?.label ??
+      this.datesLabel(),
   );
 
   protected readonly positions: ConnectedPosition[] = [

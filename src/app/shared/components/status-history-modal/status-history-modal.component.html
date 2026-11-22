@@ -1,74 +1,90 @@
-<div class="overlay" animate.leave="modal-leave" *ngIf="isOpen" (click)="onBackdropClick($event)">
-  <div
-    class="dialog"
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="dlg-title"
-    cdkTrapFocus
-    [cdkTrapFocusAutoCapture]="true"
-  >
-    <div class="dialog-head">
-      <div>
-        <h2 id="dlg-title">Histórico de {{ taskKey }}</h2>
-        <p *ngIf="!loading && earliestDate && latestDate">
-          Alterações de {{ formatDay(earliestDate) }} a {{ formatDay(latestDate) }}.
-        </p>
-        <p *ngIf="loading">Carregando histórico…</p>
-      </div>
-      <button class="btn" (click)="onSync()" [disabled]="loading || syncing">
-        <ng-container *ngIf="syncing"><span class="spin"></span>Sincronizando…</ng-container>
-        <ng-container *ngIf="!syncing">
-          <app-icon name="sync" class="ic" />
-          Sincronizar
-        </ng-container>
-      </button>
-      <button class="icon-btn lg" (click)="onClose()" aria-label="Fechar">
-        <app-icon name="close" class="ic" />
-      </button>
-    </div>
-
-    <div class="dialog-body scroll-fade">
-      <div *ngIf="loading" class="empty"><span class="spin"></span> Carregando…</div>
-
-      <div *ngIf="!loading && error" class="empty err" role="alert">{{ error }}</div>
-
-      <div *ngIf="!loading && !syncing && !error && statusHistory.length === 0" class="empty">
-        Nenhuma alteração de status encontrada.
-      </div>
-
-      <div *ngIf="!loading && statusHistory.length > 0" class="cl">
-        <div class="cl-entry" *ngFor="let entry of statusHistory; trackBy: trackEntry">
-          <span class="cl-dot" [style.--c]="dotColor(entry)"></span>
-          <div class="cl-when">
-            <b>{{ formatWhen(entry.jiraCreatedAt) }}</b>
-            <span>{{ entry.authorDisplayName || "Automação" }}</span>
-          </div>
-          <div class="cl-items">
-            <div class="item" *ngFor="let change of entry.items">
-              <span class="field-name">{{ fieldLabel(change) }}</span>
-              <ng-container *ngIf="isStatusChange(change); else plainChange">
-                <span
-                  *ngIf="change.fromString"
-                  class="badge from"
-                  [ngClass]="badgeFor(change.fromId, change.fromString)"
-                  >{{ change.fromString }}</span
-                >
-                <span *ngIf="!change.fromString" class="from">Nenhum</span>
-                <span class="faint">→</span>
-                <span *ngIf="change.toString" class="badge" [ngClass]="badgeFor(change.toId, change.toString)">{{
-                  change.toString
-                }}</span>
-                <span *ngIf="!change.toString">Nenhum</span>
-              </ng-container>
-              <ng-template #plainChange>
-                <span class="from">{{ change.fromString || "Nenhum" }}</span>
-                <span class="faint">→</span>
-                <span>{{ change.toString || "Nenhum" }}</span>
-              </ng-template>
-            </div>
-          </div>
+@if (isOpen()) {
+  <div class="overlay" animate.leave="modal-leave" (click)="onBackdropClick($event)">
+    <div
+      class="dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="dlg-title"
+      cdkTrapFocus
+      [cdkTrapFocusAutoCapture]="true"
+    >
+      <div class="dialog-head">
+        <div>
+          <h2 id="dlg-title">Histórico de {{ taskKey() }}</h2>
+          @if (!loading() && earliestDate() && latestDate()) {
+            <p>Alterações de {{ formatDay(earliestDate()) }} a {{ formatDay(latestDate()) }}.</p>
+          }
+          @if (loading()) {
+            <p>Carregando histórico…</p>
+          }
         </div>
+        <button class="btn" (click)="onSync()" [disabled]="loading() || syncing()">
+          @if (syncing()) {
+            <span class="spin"></span>Sincronizando…
+          }
+          @if (!syncing()) {
+            <app-icon name="sync" class="ic" />
+            Sincronizar
+          }
+        </button>
+        <button class="icon-btn lg" (click)="onClose()" aria-label="Fechar">
+          <app-icon name="close" class="ic" />
+        </button>
+      </div>
+      <div class="dialog-body scroll-fade">
+        @if (loading()) {
+          <div class="empty"><span class="spin"></span> Carregando…</div>
+        }
+        @if (!loading() && error()) {
+          <div class="empty err" role="alert">{{ error() }}</div>
+        }
+        @if (!loading() && !syncing() && !error() && statusHistory().length === 0) {
+          <div class="empty">Nenhuma alteração de status encontrada.</div>
+        }
+        @if (!loading() && statusHistory().length > 0) {
+          <div class="cl">
+            @for (entry of statusHistory(); track entry.changelogId) {
+              <div class="cl-entry">
+                <span class="cl-dot" [style.--c]="dotColor(entry)"></span>
+                <div class="cl-when">
+                  <b>{{ formatWhen(entry.jiraCreatedAt) }}</b>
+                  <span>{{ entry.authorDisplayName || "Automação" }}</span>
+                </div>
+                <div class="cl-items">
+                  @for (change of entry.items; track $index) {
+                    <div class="item">
+                      <span class="field-name">{{ fieldLabel(change) }}</span>
+                      @if (isStatusChange(change)) {
+                        @if (change.fromString) {
+                          <span class="badge from" [class]="badgeFor(change.fromId, change.fromString)">{{
+                            change.fromString
+                          }}</span>
+                        }
+                        @if (!change.fromString) {
+                          <span class="from">Nenhum</span>
+                        }
+                        <span class="faint">→</span>
+                        @if (change.toString) {
+                          <span class="badge" [class]="badgeFor(change.toId, change.toString)">{{
+                            change.toString
+                          }}</span>
+                        }
+                        @if (!change.toString) {
+                          <span>Nenhum</span>
+                        }
+                      } @else {
+                        <span class="from">{{ change.fromString || "Nenhum" }}</span>
+                        <span class="faint">→</span>
+                        <span>{{ change.toString || "Nenhum" }}</span>
+                      }
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        }
       </div>
     </div>
   </div>
-</div>
+}

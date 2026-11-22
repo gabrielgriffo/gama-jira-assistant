@@ -1,7 +1,8 @@
-import { Injectable, signal } from "@angular/core";
+import { Injectable, signal, inject } from "@angular/core";
 import { error as logError } from "@tauri-apps/plugin-log";
 import { JiraAuthService } from "./jira-auth.service";
 import { CurrentUser } from "./current-user";
+import { CommandError } from "../tauri/errors";
 
 export interface JiraState {
   connected: boolean;
@@ -29,6 +30,8 @@ const DISCONNECTED: JiraState = {
   providedIn: "root",
 })
 export class JiraStateService {
+  private readonly jiraAuthService = inject(JiraAuthService);
+
   private readonly _state = signal<JiraState>(DISCONNECTED);
 
   readonly state = this._state.asReadonly();
@@ -36,8 +39,6 @@ export class JiraStateService {
   readonly resolved = this._resolved.asReadonly();
   private readonly _error = signal<string | null>(null);
   readonly error = this._error.asReadonly();
-
-  constructor(private readonly jiraAuthService: JiraAuthService) {}
 
   initialize(): void {
     try {
@@ -85,7 +86,7 @@ export class JiraStateService {
   async login(baseUrl: string, email: string, apiToken: string): Promise<void> {
     await this.jiraAuthService.login(baseUrl, email, apiToken);
     await this.loadState();
-    if (!this._state().connected) throw new Error("a conexão não foi confirmada");
+    if (!this._state().connected) throw new CommandError("connection_not_confirmed", "a conexão não foi confirmada");
   }
 
   async logout(): Promise<void> {

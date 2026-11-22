@@ -1,8 +1,16 @@
-import { Component, HostListener, OnInit, effect, inject, input } from "@angular/core";
-import { CommonModule } from "@angular/common";
+import {
+  ChangeDetectionStrategy,
+  Component,
+  OnInit,
+  computed,
+  effect,
+  inject,
+  input,
+  signal,
+  untracked,
+} from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { A11yModule } from "@angular/cdk/a11y";
-import { RouterModule } from "@angular/router";
 import { error } from "@tauri-apps/plugin-log";
 import { JiraStateService } from "../../../../core/auth/jira-state.service";
 import { PontoMaisStateService } from "../../../../core/pontomais/pontomais-state.service";
@@ -48,10 +56,13 @@ export type SettingsSection = "general" | "account";
 
 @Component({
   selector: "app-settings",
-  standalone: true,
-  imports: [IconComponent, CommonModule, FormsModule, A11yModule, RouterModule, SelectComponent],
+  imports: [IconComponent, FormsModule, A11yModule, SelectComponent],
   templateUrl: "./settings.page.html",
   styleUrl: "./settings.page.css",
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  host: {
+    "(document:keydown.escape)": "onEscape()",
+  },
 })
 export class SettingsPage implements OnInit {
   private readonly themeService = inject(ThemeService);
@@ -64,48 +75,51 @@ export class SettingsPage implements OnInit {
   private localData = inject(LocalDataService);
   readonly update = inject(UpdateService);
 
-  theme: Theme = "light";
+  readonly theme = signal<Theme>("light");
 
   readonly syncIntervalOptions = SYNC_INTERVAL_OPTIONS;
   readonly manualSyncOnly = MANUAL_SYNC_ONLY;
-  minSyncIntervalMinutes = this.appSettings.minSyncIntervalMinutes;
-  syncIntervalSaving = false;
+  readonly minSyncIntervalMinutes = signal(this.appSettings.minSyncIntervalMinutes);
+  readonly syncIntervalSaving = signal(false);
 
   readonly jiraState = this.jiraStateService.state;
   readonly jiraStateError = this.jiraStateService.error;
   readonly pontoMaisState = this.pontoMaisStateService.state;
 
-  jiraLoading = false;
-  jiraError?: string;
+  readonly jiraLoading = signal(false);
+  readonly jiraError = signal<string | undefined>(undefined);
 
-  pontoMaisLoading = false;
-  pontoMaisError?: string;
-  showPontoMaisForm = false;
-  pontoMaisLogin = "";
-  pontoMaisPassword = "";
-  pontoMaisAutoReconnect = false;
+  readonly pontoMaisLoading = signal(false);
+  readonly pontoMaisError = signal<string | undefined>(undefined);
+  readonly showPontoMaisForm = signal(false);
+  readonly pontoMaisLogin = signal("");
+  readonly pontoMaisPassword = signal("");
+  readonly pontoMaisAutoReconnect = signal(false);
+  readonly canConnectPontoMais = computed(
+    () => !this.pontoMaisLoading() && this.pontoMaisLogin().trim().length > 0 && this.pontoMaisPassword().length > 0,
+  );
 
-  showLoginForm = false;
-  jiraUrl = "";
-  jiraEmail = "";
-  jiraToken = "";
+  readonly showLoginForm = signal(false);
+  readonly jiraUrl = signal("");
+  readonly jiraEmail = signal("");
+  readonly jiraToken = signal("");
 
-  jiraStatuses: JiraStatus[] = [];
-  statusColumns: StatusColumn[] = [];
-  statusesSyncing = false;
-  statusesSaving = false;
-  statusesDirty = false;
-  statusesSyncedLabel = "";
+  readonly jiraStatuses = signal<JiraStatus[]>([]);
+  readonly statusColumns = signal<StatusColumn[]>([]);
+  readonly statusesSyncing = signal(false);
+  readonly statusesSaving = signal(false);
+  readonly statusesDirty = signal(false);
+  readonly statusesSyncedLabel = signal("");
+  readonly clearingLocalData = signal(false);
+
   private savedDevelopment = new Map<string, boolean>();
-
-  clearingLocalData = false;
 
   constructor() {
     const catalogChanged = changeTracker<unknown>();
     effect(() => {
       const statuses = this.statusCatalog.statuses();
       this.statusCatalog.syncedAt();
-      if (catalogChanged(statuses)) this.applyStatuses(true);
+      if (catalogChanged(statuses)) untracked(() => this.applyStatuses(true));
     });
   }
 
@@ -115,37 +129,36 @@ export class SettingsPage implements OnInit {
   }
 
   async setSyncInterval(minutes: number): Promise<void> {
-    const previous = this.minSyncIntervalMinutes;
-    this.minSyncIntervalMinutes = minutes;
-    this.syncIntervalSaving = true;
+    const previous = this.minSyncIntervalMinutes();
+    this.minSyncIntervalMinutes.set(minutes);
+    this.syncIntervalSaving.set(true);
     try {
       await this.appSettings.saveMinSyncInterval(minutes);
     } catch (err) {
       error(`failed to save min sync interval: ${err}`);
-      this.minSyncIntervalMinutes = previous;
+      this.minSyncIntervalMinutes.set(previous);
       this.toastService.error("Não foi possível salvar o intervalo de sincronização.");
     } finally {
-      this.syncIntervalSaving = false;
+      this.syncIntervalSaving.set(false);
     }
   }
 
   loadTheme(): void {
-    this.theme = this.themeService.theme;
+    this.theme.set(this.themeService.theme);
   }
 
   setTheme(theme: Theme): void {
-    this.theme = theme;
+    this.theme.set(theme);
     this.themeService.set(theme);
   }
 
   get hasOpenForm(): boolean {
-    return this.showLoginForm || this.showPontoMaisForm;
+    return this.showLoginForm() || this.showPontoMaisForm();
   }
 
-  @HostListener("document:keydown.escape")
   onEscape(): void {
-    if (this.showLoginForm) this.closeLoginForm();
-    if (this.showPontoMaisForm) this.closePontoMaisForm();
+    if (this.showLoginForm()) this.closeLoginForm();
+    if (this.showPontoMaisForm()) this.closePontoMaisForm();
   }
 
   onOverlayClick(event: MouseEvent, modal: "jira" | "pontomais"): void {
@@ -155,33 +168,33 @@ export class SettingsPage implements OnInit {
   }
 
   openLoginForm(): void {
-    this.jiraError = undefined;
-    this.showLoginForm = true;
+    this.jiraError.set(undefined);
+    this.showLoginForm.set(true);
   }
 
   closeLoginForm(): void {
-    if (this.jiraLoading) return;
-    this.showLoginForm = false;
-    this.jiraToken = "";
-    this.jiraError = undefined;
+    if (this.jiraLoading()) return;
+    this.showLoginForm.set(false);
+    this.jiraToken.set("");
+    this.jiraError.set(undefined);
   }
 
   async connectJira(): Promise<void> {
-    if (this.jiraLoading) return;
-    this.jiraLoading = true;
-    this.jiraError = undefined;
+    if (this.jiraLoading()) return;
+    this.jiraLoading.set(true);
+    this.jiraError.set(undefined);
 
     try {
-      await this.jiraStateService.login(this.jiraUrl, this.jiraEmail, this.jiraToken);
-      this.showLoginForm = false;
-      this.jiraUrl = "";
-      this.jiraEmail = "";
-      this.jiraToken = "";
+      await this.jiraStateService.login(this.jiraUrl(), this.jiraEmail(), this.jiraToken());
+      this.showLoginForm.set(false);
+      this.jiraUrl.set("");
+      this.jiraEmail.set("");
+      this.jiraToken.set("");
     } catch (err) {
-      this.jiraError = `Não foi possível conectar ao Jira: ${err}`;
+      this.jiraError.set(`Não foi possível conectar ao Jira: ${err}`);
       error(`failed to connect Jira: ${err}`);
     } finally {
-      this.jiraLoading = false;
+      this.jiraLoading.set(false);
     }
   }
 
@@ -190,61 +203,57 @@ export class SettingsPage implements OnInit {
       return;
     }
 
-    this.jiraLoading = true;
-    this.jiraError = undefined;
+    this.jiraLoading.set(true);
+    this.jiraError.set(undefined);
 
     try {
       await this.jiraStateService.logout();
-      this.jiraUrl = "";
-      this.jiraEmail = "";
-      this.jiraToken = "";
+      this.jiraUrl.set("");
+      this.jiraEmail.set("");
+      this.jiraToken.set("");
     } catch (err) {
-      this.jiraError = "Não foi possível desconectar a conta do Jira.";
+      this.jiraError.set("Não foi possível desconectar a conta do Jira.");
       error(`failed to disconnect Jira: ${err}`);
     } finally {
-      this.jiraLoading = false;
+      this.jiraLoading.set(false);
     }
   }
 
   openPontoMaisForm(): void {
-    this.pontoMaisError = undefined;
-    this.pontoMaisLogin = this.pontoMaisState().account ?? "";
-    this.pontoMaisPassword = "";
-    this.pontoMaisAutoReconnect = this.pontoMaisState().autoReconnect;
-    this.showPontoMaisForm = true;
+    this.pontoMaisError.set(undefined);
+    this.pontoMaisLogin.set(this.pontoMaisState().account ?? "");
+    this.pontoMaisPassword.set("");
+    this.pontoMaisAutoReconnect.set(this.pontoMaisState().autoReconnect);
+    this.showPontoMaisForm.set(true);
   }
 
   closePontoMaisForm(): void {
-    if (this.pontoMaisLoading) return;
-    this.showPontoMaisForm = false;
-    this.pontoMaisPassword = "";
-    this.pontoMaisError = undefined;
-  }
-
-  get canConnectPontoMais(): boolean {
-    return !this.pontoMaisLoading && this.pontoMaisLogin.trim().length > 0 && this.pontoMaisPassword.length > 0;
+    if (this.pontoMaisLoading()) return;
+    this.showPontoMaisForm.set(false);
+    this.pontoMaisPassword.set("");
+    this.pontoMaisError.set(undefined);
   }
 
   async connectPontoMais(): Promise<void> {
-    if (!this.canConnectPontoMais) return;
+    if (!this.canConnectPontoMais()) return;
 
-    this.pontoMaisLoading = true;
-    this.pontoMaisError = undefined;
+    this.pontoMaisLoading.set(true);
+    this.pontoMaisError.set(undefined);
 
     try {
       await this.pontoMaisStateService.connect(
-        this.pontoMaisLogin,
-        this.pontoMaisPassword,
-        this.pontoMaisAutoReconnect,
+        this.pontoMaisLogin(),
+        this.pontoMaisPassword(),
+        this.pontoMaisAutoReconnect(),
       );
-      this.showPontoMaisForm = false;
+      this.showPontoMaisForm.set(false);
       this.toastService.success("Conta do PontoMais conectada.");
     } catch (err) {
       error(`failed to connect PontoMais: ${err}`);
-      this.pontoMaisError = `Não foi possível conectar ao PontoMais: ${err}`;
+      this.pontoMaisError.set(`Não foi possível conectar ao PontoMais: ${err}`);
     } finally {
-      this.pontoMaisPassword = "";
-      this.pontoMaisLoading = false;
+      this.pontoMaisPassword.set("");
+      this.pontoMaisLoading.set(false);
     }
   }
 
@@ -253,16 +262,16 @@ export class SettingsPage implements OnInit {
       return;
     }
 
-    this.pontoMaisLoading = true;
-    this.pontoMaisError = undefined;
+    this.pontoMaisLoading.set(true);
+    this.pontoMaisError.set(undefined);
 
     try {
       await this.pontoMaisStateService.disconnect();
     } catch (err) {
-      this.pontoMaisError = "Não foi possível desconectar a conta do PontoMais.";
+      this.pontoMaisError.set("Não foi possível desconectar a conta do PontoMais.");
       error(`failed to disconnect PontoMais: ${err}`);
     } finally {
-      this.pontoMaisLoading = false;
+      this.pontoMaisLoading.set(false);
     }
   }
 
@@ -275,7 +284,7 @@ export class SettingsPage implements OnInit {
       return;
     }
 
-    this.clearingLocalData = true;
+    this.clearingLocalData.set(true);
     try {
       await preferencesCommands.clearLocalData();
       this.localData.markCleared();
@@ -286,12 +295,12 @@ export class SettingsPage implements OnInit {
       error(`failed to clear local data: ${err}`);
       this.toastService.error("Não foi possível apagar os dados locais.");
     } finally {
-      this.clearingLocalData = false;
+      this.clearingLocalData.set(false);
     }
   }
 
   async syncJiraStatusCatalog(): Promise<void> {
-    this.statusesSyncing = true;
+    this.statusesSyncing.set(true);
     try {
       await statusCommands.syncCatalog();
       await this.statusCatalog.load();
@@ -300,7 +309,7 @@ export class SettingsPage implements OnInit {
       error(`failed to sync Jira status catalog: ${err}`);
       this.toastService.error("Não foi possível sincronizar os status do Jira.");
     } finally {
-      this.statusesSyncing = false;
+      this.statusesSyncing.set(false);
     }
   }
 
@@ -310,14 +319,14 @@ export class SettingsPage implements OnInit {
   }
 
   checkStatusesDirty(): void {
-    this.statusesDirty = this.pendingStatusUpdates().length > 0;
+    this.statusesDirty.set(this.pendingStatusUpdates().length > 0);
   }
 
   async saveStatusChanges(): Promise<void> {
     const updates = this.pendingStatusUpdates();
     if (!updates.length) return;
 
-    this.statusesSaving = true;
+    this.statusesSaving.set(true);
     try {
       await statusCommands.updateIsDevelopment(updates);
       updates.forEach((u) => this.savedDevelopment.set(u.statusId, u.isDevelopment));
@@ -328,7 +337,7 @@ export class SettingsPage implements OnInit {
       error(`failed to save development statuses: ${err}`);
       this.toastService.error("Não foi possível salvar os status de desenvolvimento.");
     } finally {
-      this.statusesSaving = false;
+      this.statusesSaving.set(false);
     }
   }
 
@@ -336,14 +345,10 @@ export class SettingsPage implements OnInit {
     return STATUS_CATEGORIES[status.categoryKey]?.badge ?? "info";
   }
 
-  trackStatus(_: number, status: JiraStatus): string {
-    return status.id;
-  }
-
   private applyStatuses(keepDrafts: boolean): void {
     const drafts = new Map<string, boolean>();
     if (keepDrafts) {
-      for (const status of this.jiraStatuses) {
+      for (const status of this.jiraStatuses()) {
         if (this.savedDevelopment.get(status.id) !== status.isDevelopment) {
           drafts.set(status.id, status.isDevelopment);
         }
@@ -359,16 +364,18 @@ export class SettingsPage implements OnInit {
       if (draft !== undefined) status.isDevelopment = draft;
     }
 
-    this.jiraStatuses = [...statuses].sort(
-      (a, b) => this.categoryOrder(a) - this.categoryOrder(b) || a.name.localeCompare(b.name, "pt-BR"),
+    this.jiraStatuses.set(
+      [...statuses].sort(
+        (a, b) => this.categoryOrder(a) - this.categoryOrder(b) || a.name.localeCompare(b.name, "pt-BR"),
+      ),
     );
-    this.statusColumns = this.splitColumns(this.jiraStatuses, STATUS_COLUMNS);
-    this.statusesSyncedLabel = syncedAt ? `Atualizado ${relativeDateTime(syncedAt, this.appSettings.timeZone)}` : "";
+    this.statusColumns.set(this.splitColumns(this.jiraStatuses(), STATUS_COLUMNS));
+    this.statusesSyncedLabel.set(syncedAt ? `Atualizado ${relativeDateTime(syncedAt, this.appSettings.timeZone)}` : "");
     this.checkStatusesDirty();
   }
 
   private pendingStatusUpdates(): { statusId: string; isDevelopment: boolean }[] {
-    return this.jiraStatuses
+    return this.jiraStatuses()
       .filter((s) => this.savedDevelopment.get(s.id) !== s.isDevelopment)
       .map((s) => ({ statusId: s.id, isDevelopment: s.isDevelopment }));
   }

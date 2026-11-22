@@ -2,25 +2,28 @@
   <div class="title-row">
     <h1>Tarefas</h1>
     <span class="sub"
-      >{{ tasks.length }}
-      {{ tasks.length === 1 ? "tarefa atribuída a você e atualizada" : "tarefas atribuídas a você e atualizadas" }} no
+      >{{ tasks().length }}
+      {{ tasks().length === 1 ? "tarefa atribuída a você e atualizada" : "tarefas atribuídas a você e atualizadas" }} no
       período</span
     >
   </div>
   <div class="toolbar">
     <gama-date-range-picker
-      [value]="range"
-      [timeZone]="timeZone"
+      [value]="range()"
+      [timeZone]="timeZone()"
+      [currentDay]="today()"
       applyText="Aplicar e sincronizar"
       (applied)="applyRange($event)"
     />
     <div class="spacer"></div>
-    <button class="btn" (click)="loadTasks(true)" [disabled]="syncing">
-      <ng-container *ngIf="syncing"><span class="spin"></span>Sincronizando…</ng-container>
-      <ng-container *ngIf="!syncing">
+    <button class="btn" (click)="loadTasks(true)" [disabled]="syncing()">
+      @if (syncing()) {
+        <span class="spin"></span>Sincronizando…
+      }
+      @if (!syncing()) {
         <app-icon name="sync" class="ic" />
         Sincronizar
-      </ng-container>
+      }
     </button>
   </div>
 </header>
@@ -28,14 +31,11 @@
 <div class="content">
   <section class="card">
     <div class="tabs" role="tablist" aria-label="Categoria do status">
-      <button
-        role="tab"
-        *ngFor="let tab of tabs; trackBy: trackTab"
-        [attr.aria-selected]="tab.id === activeTab"
-        (click)="activeTab = tab.id"
-      >
-        {{ tab.label }}<span class="n">{{ tab.count }}</span>
-      </button>
+      @for (tab of tabs(); track tab.id) {
+        <button role="tab" [attr.aria-selected]="tab.id === activeTab()" (click)="activeTab.set(tab.id)">
+          {{ tab.label }}<span class="n">{{ tab.count }}</span>
+        </button>
+      }
     </div>
 
     <div class="filters">
@@ -55,7 +55,7 @@
         Priorizar tarefas em desenvolvimento
       </label>
       <span class="result"
-        >Exibindo {{ visibleTasks.length }} {{ visibleTasks.length === 1 ? "tarefa" : "tarefas" }}</span
+        >Exibindo {{ visibleTasks().length }} {{ visibleTasks().length === 1 ? "tarefa" : "tarefas" }}</span
       >
     </div>
 
@@ -81,51 +81,57 @@
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let task of visibleTasks; trackBy: trackTask">
-            <td class="key-cell">
-              <button class="key" (click)="openTask(task, $event)">{{ task.key }}</button>
-            </td>
-            <td class="issue">
-              <span class="issue-title">{{ task.summary }}</span>
-              <span class="issue-meta" *ngIf="metaLabel(task) as meta">{{ meta }}</span>
-            </td>
-            <td>
-              <span class="badge" [ngClass]="statusBadge(task)">{{ task.statusName }}</span>
-            </td>
-            <td class="muted">{{ updatedLabel(task) }}</td>
-            <td class="actions">
-              <button
-                class="icon-btn"
-                (click)="viewStatusHistory(task, $event)"
-                [attr.aria-label]="'Ver histórico de ' + task.key"
-              >
-                <app-icon name="history" class="ic" />
-              </button>
-            </td>
-          </tr>
+          @for (task of visibleTasks(); track task.id) {
+            <tr>
+              <td class="key-cell">
+                <button class="key" (click)="openTask(task, $event)">{{ task.key }}</button>
+              </td>
+              <td class="issue">
+                <span class="issue-title">{{ task.summary }}</span>
+                @if (metaLabel(task); as meta) {
+                  <span class="issue-meta">{{ meta }}</span>
+                }
+              </td>
+              <td>
+                <span class="badge" [class]="statusBadge(task)">{{ task.statusName }}</span>
+              </td>
+              <td class="muted">{{ updatedLabel(task) }}</td>
+              <td class="actions">
+                <button
+                  class="icon-btn"
+                  (click)="viewStatusHistory(task, $event)"
+                  [attr.aria-label]="'Ver histórico de ' + task.key"
+                >
+                  <app-icon name="history" class="ic" />
+                </button>
+              </td>
+            </tr>
+          }
         </tbody>
       </table>
       <button type="button" class="to-bottom" (click)="scrollToBottom(tableScroll)" aria-label="Ir para o fim da lista">
         <app-icon name="chevron-down" class="ic" />
       </button>
 
-      <div class="empty" *ngIf="!loading && !errorMessage && !visibleTasks.length">
-        Nenhuma tarefa corresponde aos filtros selecionados.
-      </div>
-      <div class="empty err" role="alert" *ngIf="!loading && errorMessage">{{ errorMessage }}</div>
+      @if (!loading() && !errorMessage() && !visibleTasks().length) {
+        <div class="empty">Nenhuma tarefa corresponde aos filtros selecionados.</div>
+      }
+      @if (!loading() && errorMessage()) {
+        <div class="empty err" role="alert">{{ errorMessage() }}</div>
+      }
     </div>
   </section>
 </div>
 
 <app-status-history-modal
-  [isOpen]="isModalOpen"
-  [taskKey]="selectedTaskKey"
-  [statusHistory]="statusHistory"
-  [loading]="loadingStatusHistory"
-  [syncing]="syncingStatusHistory"
-  [earliestDate]="earliestDate"
-  [latestDate]="latestDate"
-  [error]="historyError"
+  [isOpen]="isModalOpen()"
+  [taskKey]="selectedTaskKey()"
+  [statusHistory]="statusHistory()"
+  [loading]="loadingStatusHistory()"
+  [syncing]="syncingStatusHistory()"
+  [earliestDate]="earliestDate()"
+  [latestDate]="latestDate()"
+  [error]="historyError()"
   (close)="closeModal()"
   (sync)="syncStatusHistory()"
-></app-status-history-modal>
+/>

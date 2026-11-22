@@ -5,6 +5,9 @@ import { relaunch } from "@tauri-apps/plugin-process";
 import { check, type Update } from "@tauri-apps/plugin-updater";
 import { updateStatusText, type UpdateStatus } from "./update-status";
 
+const CHECK_TIMEOUT_MS = 30_000;
+const DOWNLOAD_TIMEOUT_MS = 10 * 60_000;
+
 @Injectable({ providedIn: "root" })
 export class UpdateService {
   readonly status = signal<UpdateStatus>({ phase: "idle" });
@@ -59,7 +62,7 @@ export class UpdateService {
     this.status.set({ phase: "checking" });
     void logInfo(`[UPDATER] Verificando atualizações (${manual ? "manual" : "ao abrir"})`);
     try {
-      const update = await check();
+      const update = await check({ timeout: CHECK_TIMEOUT_MS });
       if (!update) {
         void logInfo("[UPDATER] Nenhuma atualização disponível");
         this.status.set({ phase: manual ? "up-to-date" : "idle" });
@@ -70,11 +73,14 @@ export class UpdateService {
       this.status.set({ phase: "downloading", version: update.version, downloaded: 0 });
       let downloaded = 0;
       let total: number | undefined;
-      await update.download((event) => {
-        if (event.event === "Started") total = event.data.contentLength;
-        if (event.event === "Progress") downloaded += event.data.chunkLength;
-        this.status.set({ phase: "downloading", version: update.version, downloaded, total });
-      });
+      await update.download(
+        (event) => {
+          if (event.event === "Started") total = event.data.contentLength;
+          if (event.event === "Progress") downloaded += event.data.chunkLength;
+          this.status.set({ phase: "downloading", version: update.version, downloaded, total });
+        },
+        { timeout: DOWNLOAD_TIMEOUT_MS },
+      );
 
       this.pending = update;
       this.dismissed.set(false);

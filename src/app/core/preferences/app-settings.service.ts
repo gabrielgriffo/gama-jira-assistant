@@ -1,11 +1,13 @@
-import { effect, inject, Injectable } from "@angular/core";
+import { computed, effect, inject, Injectable, signal } from "@angular/core";
 import { error } from "@tauri-apps/plugin-log";
 import { JiraStateService } from "../auth/jira-state.service";
 import { connectionCommands, Preferences, preferencesCommands, RangeScreen } from "../tauri";
 import { localTimeZone, todayIn } from "../../shared/date/local-date";
+import { LatestOnly } from "../../shared/async/latest-only";
 import { fromRangePreference, RangePreset, RangeSelection, toRangePreference } from "../../shared/date/range-presets";
 
 const DEFAULT_MIN_SYNC_INTERVAL_MINUTES = 5;
+const CLOCK_TICK_MS = 60_000;
 
 const RANGE_KEYS = {
   tasks: "tasksRange",
@@ -18,10 +20,17 @@ const RANGE_KEYS = {
 })
 export class AppSettingsService {
   private preferences: Preferences | null = null;
-  private zone = localTimeZone();
+  private readonly zone = signal(localTimeZone());
+  private readonly zoneLoads = new LatestOnly();
+  private readonly clock = signal(0);
+  readonly today = computed(() => {
+    this.clock();
+    return todayIn(this.zone());
+  });
   private lastConnected: boolean | null = null;
 
   constructor() {
+    setInterval(() => this.clock.update((tick) => tick + 1), CLOCK_TICK_MS);
     const jiraState = inject(JiraStateService);
     effect(() => {
       const resolved = jiraState.resolved();
@@ -33,7 +42,7 @@ export class AppSettingsService {
   }
 
   get timeZone(): string {
-    return this.zone;
+    return this.zone();
   }
 
   get savedTheme(): Preferences["theme"] | undefined {
@@ -63,11 +72,11 @@ export class AppSettingsService {
   }
 
   range(screen: RangeScreen, fallbackId: string, presets?: RangePreset[]): RangeSelection {
-    return fromRangePreference(this.preferences?.[RANGE_KEYS[screen]], todayIn(this.zone), fallbackId, presets);
+    return fromRangePreference(this.preferences?.[RANGE_KEYS[screen]], todayIn(this.zone()), fallbackId, presets);
   }
 
   saveRange(screen: RangeScreen, range: RangeSelection, presets?: RangePreset[]): void {
-    const saved = toRangePreference(range, todayIn(this.zone), presets);
+    const saved = toRangePreference(range, todayIn(this.zone()), presets);
     if (this.preferences) this.preferences[RANGE_KEYS[screen]] = saved;
     preferencesCommands
       .updateRangePreference(screen, saved)
@@ -75,8 +84,10 @@ export class AppSettingsService {
   }
 
   private async refreshTimeZone(): Promise<void> {
+    const isCurrent = this.zoneLoads.begin();
     try {
-      this.zone = (await connectionCommands.getJiraTimeZone()) || localTimeZone();
+      const zone = (await connectionCommands.getJiraTimeZone()) || localTimeZone();
+      if (isCurrent()) this.zone.set(zone);
     } catch (err) {
       error(`failed to load Jira time zone: ${err}`);
     }

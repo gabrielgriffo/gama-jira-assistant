@@ -1,7 +1,14 @@
-import { Component, NgZone, OnDestroy, OnInit, effect, inject } from "@angular/core";
-import { CommonModule } from "@angular/common";
-import { FormsModule } from "@angular/forms";
-import { RouterModule } from "@angular/router";
+import {
+  ChangeDetectionStrategy,
+  Component,
+  OnDestroy,
+  OnInit,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+} from "@angular/core";
 import { error } from "@tauri-apps/plugin-log";
 import {
   MinuteRange,
@@ -12,15 +19,15 @@ import {
 import { WorklogDraft } from "../../data-access/worklog";
 import { daysWithPunches } from "./days-with-punches";
 import { draftSnapshot } from "./draft-snapshot";
+import { chronologicalOrder } from "./task-order";
 import { IssueChange } from "../../../../core/models";
 import { StatusHistoryModalComponent } from "../../../../shared/components/status-history-modal/status-history-modal.component";
 import { DayWorklogPreviewModalComponent } from "../../dialogs/day-worklog-preview-modal/day-worklog-preview-modal.component";
-import { TaskService } from "../../../../core/issues/task.service";
 import { ToastService } from "../../../../core/feedback/toast.service";
 import { DateRangePickerComponent } from "../../../../shared/ui/date-range-picker/date-range-picker.component";
-import { weekday } from "../../../../shared/date/local-date";
+import { sameDates, weekday } from "../../../../shared/date/local-date";
 import { RangeSelection, WORKLOG_GENERATE_PRESETS } from "../../../../shared/date/range-presets";
-import { isMissingCredentials, worklogsCommands } from "../../../../core/tauri";
+import { changelogCommands, isMissingCredentials, worklogsCommands } from "../../../../core/tauri";
 import { LatestOnly } from "../../../../shared/async/latest-only";
 import { ListenerBag } from "../../../../shared/async/listeners";
 import { Adjustments } from "./adjustments";
@@ -41,116 +48,102 @@ const MONTHS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "
 
 @Component({
   selector: "app-worklog-generate",
-  imports: [
-    IconComponent,
-    CommonModule,
-    FormsModule,
-    RouterModule,
-    StatusHistoryModalComponent,
-    DayWorklogPreviewModalComponent,
-    DateRangePickerComponent,
-  ],
+  imports: [IconComponent, StatusHistoryModalComponent, DayWorklogPreviewModalComponent, DateRangePickerComponent],
   templateUrl: "./worklog-generate.page.html",
   styleUrl: "./worklog-generate.page.css",
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class WorklogGeneratePage implements OnInit, OnDestroy {
-  readonly presets = WORKLOG_GENERATE_PRESETS;
-  axisStart = MIN_AXIS_START;
-  axisEnd = MIN_AXIS_END;
-  axisTicks: { label: string; left: string }[] = [];
-  axisGuides: string[] = [];
-
+  private pontoMaisService = inject(PontoMaisService);
+  private toastService = inject(ToastService);
   private readonly settings = inject(AppSettingsService);
-  get timeZone(): string {
-    return this.settings.timeZone;
-  }
-  range: RangeSelection = this.settings.range("worklogGenerate", "week", this.presets);
-
-  importingPonto = false;
-  timelineLoaded = false;
-  loadError = "";
-  timeline: WorkDayTimeline[] = [];
-
-  isModalOpen = false;
-  selectedTaskKey = "";
-  statusHistory: IssueChange[] = [];
-  earliestDate: string | null = null;
-  latestDate: string | null = null;
-  fetchingStatusHistory = false;
-  historyError = "";
-
-  showDayWorklogPreview = false;
-  dayWorklogPreviewDate = "";
-
-  private readonly adjustments = new Adjustments();
+  private readonly syncState = inject(SyncStateService);
+  private readonly pontoMaisState = inject(PontoMaisStateService);
   private readonly draftStore = inject(WorklogDraftStore);
   private readonly drafts = this.draftStore.drafts;
   private readonly generatedDrafts = this.draftStore.generated;
+
+  readonly presets = WORKLOG_GENERATE_PRESETS;
+  readonly timeZone = computed(() => this.settings.timeZone);
+  readonly today = this.settings.today;
+  readonly range = signal<RangeSelection>(this.settings.range("worklogGenerate", "week", this.presets));
+
+  readonly importingPonto = signal(false);
+  readonly timelineLoaded = signal(false);
+  readonly loadError = signal("");
+  readonly timeline = signal<WorkDayTimeline[]>([]);
+  readonly axis = computed(() => buildAxis(this.timeline()));
+
+  readonly isModalOpen = signal(false);
+  readonly selectedTaskKey = signal("");
+  readonly statusHistory = signal<IssueChange[]>([]);
+  readonly earliestDate = signal<string | null>(null);
+  readonly latestDate = signal<string | null>(null);
+  readonly loadingStatusHistory = signal(false);
+  readonly historyError = signal("");
+
+  readonly showDayWorklogPreview = signal(false);
+  readonly dayWorklogPreviewDate = signal("");
+
+  readonly hasPontoMais = computed(() => this.pontoMaisState.state().connected);
+  readonly syncing = computed(() => this.syncState.isRangeSyncing("period", this.range()));
+  readonly syncingStatusHistory = computed(
+    () => this.isModalOpen() && this.syncState.isChangelogSyncing(this.selectedTaskKey()),
+  );
+  readonly emptyHint = computed(() =>
+    this.hasPontoMais()
+      ? "Utilize Importar ponto para obter as marcações."
+      : "Conecte a conta do PontoMais em Configurações para importar as marcações.",
+  );
+  readonly dayWorklogPreviewDay = computed(
+    () => this.timeline().find((d) => d.date === this.dayWorklogPreviewDate()) ?? null,
+  );
+  readonly dayWorklogPreviewDrafts = computed(() => this.drafts.get(this.dayWorklogPreviewDate()) ?? NO_DRAFTS);
+
+  private readonly adjustments = new Adjustments();
   private readonly listeners = new ListenerBag();
   private readonly timelineLoads = new LatestOnly();
   private loadedRange: RangeSelection | null = null;
-  private readonly syncState = inject(SyncStateService);
-  private readonly pontoMaisState = inject(PontoMaisStateService);
+  private readonly adjustmentsRevision = signal(0);
 
-  constructor(
-    private pontoMaisService: PontoMaisService,
-    private taskService: TaskService,
-    private ngZone: NgZone,
-    private toastService: ToastService,
-  ) {
-    this.updateAxis();
-
+  constructor() {
     const localData = inject(LocalDataService);
     const sessionChanged = changeTracker<string>();
     effect(() => {
       if (!sessionChanged(localData.sessionKey())) return;
-      this.resetForNewSession();
+      untracked(() => this.resetForNewSession());
     });
 
     const statusCatalog = inject(StatusCatalogStore);
     const catalogChanged = changeTracker<unknown>();
     effect(() => {
-      if (catalogChanged(statusCatalog.statuses())) this.loadTimeline();
+      if (catalogChanged(statusCatalog.statuses())) untracked(() => this.loadTimeline());
     });
 
     const pontoChanged = changeTracker<string>();
     effect(() => {
       const ponto = this.pontoMaisState.state();
       if (!pontoChanged(`${ponto.connected}|${ponto.account ?? ""}`)) return;
-      this.loadTimeline();
-      if (ponto.connected) this.syncPeriod(false);
+      untracked(() => {
+        this.loadTimeline();
+        if (ponto.connected) this.syncPeriod(false);
+      });
     });
-  }
-
-  get hasPontoMais(): boolean {
-    return this.pontoMaisState.state().connected;
   }
 
   private resetForNewSession(): void {
     this.timelineLoads.begin();
-    this.timeline = [];
+    this.timeline.set([]);
     this.loadedRange = null;
-    this.loadError = "";
+    this.loadError.set("");
     this.adjustments.clear();
+    this.bumpAdjustments();
     this.draftStore.clear();
-    this.showDayWorklogPreview = false;
-    this.dayWorklogPreviewDate = "";
+    this.showDayWorklogPreview.set(false);
+    this.dayWorklogPreviewDate.set("");
     this.closeModal();
-    this.updateAxis();
     this.loadTimeline();
     this.syncPeriod(false);
-  }
-
-  get syncing(): boolean {
-    return this.syncState.isRangeSyncing("period", this.range);
-  }
-
-  get loadingStatusHistory(): boolean {
-    return this.fetchingStatusHistory;
-  }
-
-  get syncingStatusHistory(): boolean {
-    return this.isModalOpen && this.syncState.isChangelogSyncing(this.selectedTaskKey);
   }
 
   async ngOnInit(): Promise<void> {
@@ -169,7 +162,7 @@ export class WorklogGeneratePage implements OnInit, OnDestroy {
     await this.listeners.add(
       Promise.resolve(
         this.syncState.onFinished((key) => {
-          if (key === rangeSyncKey("period", this.range)) {
+          if (key === rangeSyncKey("period", this.range())) {
             this.loadTimeline();
           }
         }),
@@ -177,70 +170,55 @@ export class WorklogGeneratePage implements OnInit, OnDestroy {
     );
 
     await this.listeners.add(
-      this.taskService.onStatusHistorySynced((issueKey: string) => {
-        this.ngZone.run(async () => {
-          if (this.isModalOpen && this.selectedTaskKey === issueKey) {
-            await this.reloadStatusHistory();
-          }
-        });
+      changelogCommands.onStatusHistorySynced((issueKey: string) => {
+        if (this.isShowingHistory(issueKey)) this.reloadStatusHistory();
       }),
     );
 
     await this.listeners.add(
-      this.taskService.onStatusHistorySyncFailed((payload: { issueKey: string; reason: string }) => {
-        this.ngZone.run(() => {
-          if (this.isModalOpen && this.selectedTaskKey === payload.issueKey) {
-            if (!this.statusHistory.length) {
-              this.historyError = "Não foi possível carregar o histórico de status.";
-            }
-          }
-        });
+      changelogCommands.onStatusHistorySyncFailed((payload: { issueKey: string; reason: string }) => {
+        if (this.isShowingHistory(payload.issueKey) && !this.statusHistory().length) {
+          this.historyError.set("Não foi possível carregar o histórico de status.");
+        }
       }),
     );
   }
 
   async applyRange(range: RangeSelection): Promise<void> {
-    this.range = range;
+    this.range.set(range);
     this.adjustments.clear();
+    this.bumpAdjustments();
     this.settings.saveRange("worklogGenerate", range, this.presets);
     await this.loadTimeline();
     await this.syncPeriod(false);
   }
 
-  get emptyHint(): string {
-    return this.hasPontoMais
-      ? "Utilize Importar ponto para obter as marcações."
-      : "Conecte a conta do PontoMais em Configurações para importar as marcações.";
-  }
-
   async loadTimeline(): Promise<void> {
-    const range = this.range;
+    const range = this.range();
     const isCurrent = this.timelineLoads.begin();
     try {
       const timeline = daysWithPunches(await this.pontoMaisService.getPontoMaisTimeline(range.from, range.to));
       if (!isCurrent()) return;
-      this.timeline = timeline;
+      this.timeline.set(timeline);
       this.loadedRange = range;
-      this.loadError = "";
-      this.updateAxis();
+      this.loadError.set("");
     } catch (err) {
       if (!isCurrent()) return;
       error(`failed to load worklog timeline: ${err}`);
       this.toastService.error("Não foi possível carregar a linha do tempo do período.");
-      if (this.loadedRange !== range) {
-        this.timeline = [];
-        this.loadError = "Não foi possível carregar a linha do tempo do período selecionado.";
-        this.updateAxis();
+      if (!sameDates(this.loadedRange, range)) {
+        this.timeline.set([]);
+        this.loadError.set("Não foi possível carregar a linha do tempo do período selecionado.");
       }
     } finally {
-      if (isCurrent()) this.timelineLoaded = true;
+      if (isCurrent()) this.timelineLoaded.set(true);
     }
   }
 
   async syncPeriod(notify = true): Promise<void> {
-    if (this.syncing) return;
+    if (this.syncing()) return;
     try {
-      const summary = await worklogsCommands.syncWorklogPeriod(this.range.from, this.range.to, notify);
+      const summary = await worklogsCommands.syncWorklogPeriod(this.range().from, this.range().to, notify);
       if (summary && notify) {
         const ponto =
           summary.pontoEntries === null ? "PontoMais não conectado" : `${summary.pontoEntries} marcações de ponto`;
@@ -258,9 +236,9 @@ export class WorklogGeneratePage implements OnInit, OnDestroy {
   }
 
   async importPonto(): Promise<void> {
-    this.importingPonto = true;
+    this.importingPonto.set(true);
     try {
-      const total = await this.pontoMaisService.syncPontoMaisEntries(this.range.from, this.range.to);
+      const total = await this.pontoMaisService.syncPontoMaisEntries(this.range().from, this.range().to);
       await this.loadTimeline();
       this.toastService.success(`${total} marcações de ponto importadas.`);
     } catch (err) {
@@ -268,7 +246,7 @@ export class WorklogGeneratePage implements OnInit, OnDestroy {
       await this.refreshPontoMaisConnection();
       this.toastService.error(`Não foi possível importar o ponto: ${err}`);
     } finally {
-      this.importingPonto = false;
+      this.importingPonto.set(false);
     }
   }
 
@@ -282,14 +260,6 @@ export class WorklogGeneratePage implements OnInit, OnDestroy {
 
   scrollToBottom(element: HTMLElement): void {
     element.scrollTo({ top: element.scrollHeight, behavior: "smooth" });
-  }
-
-  trackDay(_: number, day: WorkDayTimeline): string {
-    return day.date;
-  }
-
-  trackTask(_: number, task: TaskWorkedInfo): string {
-    return task.issueId;
   }
 
   dayTitle(date: string): string {
@@ -309,28 +279,7 @@ export class WorklogGeneratePage implements OnInit, OnDestroy {
   }
 
   pct(minutes: number): string {
-    const clamped = Math.min(Math.max(minutes, this.axisStart), this.axisEnd);
-    return `${(((clamped - this.axisStart) / (this.axisEnd - this.axisStart)) * 100).toFixed(3)}%`;
-  }
-
-  private updateAxis(): void {
-    const ranges = this.timeline.flatMap((day) => [
-      ...day.punchIntervals,
-      ...day.tasksWorked.flatMap((task) => task.countedSegments),
-    ]);
-    const earliest = Math.min(MIN_AXIS_START, ...ranges.map((r) => r.start));
-    const latest = Math.max(MIN_AXIS_END, ...ranges.map((r) => r.end));
-    this.axisStart = Math.max(0, Math.floor(earliest / 60) * 60);
-    this.axisEnd = Math.min(1440, Math.ceil(latest / 60) * 60);
-
-    const first = this.axisStart / 60;
-    const last = this.axisEnd / 60;
-    const hours: number[] = [];
-    for (let h = first; h <= last; h++) {
-      if (h === first || h === last || h % 2 === 1) hours.push(h);
-    }
-    this.axisTicks = hours.map((h) => ({ label: `${String(h).padStart(2, "0")}h`, left: this.pct(h * 60) }));
-    this.axisGuides = hours.slice(1, -1).map((h) => this.pct(h * 60));
+    return axisPct(this.axis(), minutes);
   }
 
   spanStyle(segment: MinuteRange): Record<string, string> {
@@ -358,6 +307,7 @@ export class WorklogGeneratePage implements OnInit, OnDestroy {
   }
 
   adjustment(day: WorkDayTimeline, task: TaskWorkedInfo): number {
+    this.adjustmentsRevision();
     return this.adjustments.get(day, task);
   }
 
@@ -374,89 +324,93 @@ export class WorklogGeneratePage implements OnInit, OnDestroy {
   }
 
   canFix(day: WorkDayTimeline): boolean {
-    return this.difference(day) !== 0 && !day.open && day.gamaSyncedCount === 0 && day.totalMinutes > 0;
+    return (
+      this.difference(day) !== 0 &&
+      !day.open &&
+      day.gamaSyncedCount === 0 &&
+      day.totalMinutes > 0 &&
+      !this.hasOpenDrafts(day)
+    );
   }
 
   fix(day: WorkDayTimeline, task: TaskWorkedInfo): void {
     const current = this.adjustments.get(day, task);
     this.adjustments.set(day, task, Math.max(1 - task.workedMinutes, current + this.difference(day)));
+    this.bumpAdjustments();
   }
 
   unfix(day: WorkDayTimeline, task: TaskWorkedInfo): void {
     this.adjustments.delete(day, task);
+    this.bumpAdjustments();
+  }
+
+  private bumpAdjustments(): void {
+    this.adjustmentsRevision.update((n) => n + 1);
   }
 
   async onTaskClick(taskKey: string): Promise<void> {
-    this.selectedTaskKey = taskKey;
-    this.isModalOpen = true;
-    this.statusHistory = [];
-    this.earliestDate = null;
-    this.latestDate = null;
-    this.historyError = "";
-    this.fetchingStatusHistory = true;
+    this.selectedTaskKey.set(taskKey);
+    this.isModalOpen.set(true);
+    this.statusHistory.set([]);
+    this.earliestDate.set(null);
+    this.latestDate.set(null);
+    this.historyError.set("");
+    this.loadingStatusHistory.set(true);
 
     try {
-      const response = await this.taskService.getStatusHistory(taskKey);
+      const response = await changelogCommands.getStatusHistory(taskKey);
       if (!this.isShowingHistory(taskKey)) return;
-      this.statusHistory = response.entries;
-      this.earliestDate = response.earliestDate;
-      this.latestDate = response.latestDate;
+      this.statusHistory.set(response.entries);
+      this.earliestDate.set(response.earliestDate);
+      this.latestDate.set(response.latestDate);
     } catch (err) {
       error(`failed to get status history ${taskKey}: ${err}`);
       if (!this.isShowingHistory(taskKey)) return;
-      this.historyError = "Não foi possível carregar o histórico de status.";
+      this.historyError.set("Não foi possível carregar o histórico de status.");
     } finally {
-      if (this.isShowingHistory(taskKey)) this.fetchingStatusHistory = false;
+      if (this.isShowingHistory(taskKey)) this.loadingStatusHistory.set(false);
     }
   }
 
   async syncStatusHistory(): Promise<void> {
-    const key = this.selectedTaskKey;
+    const key = this.selectedTaskKey();
     if (!key) return;
     try {
-      await this.taskService.getStatusHistory(key, true);
+      await changelogCommands.getStatusHistory(key, true);
     } catch (err) {
       error(`failed to sync status history ${key}: ${err}`);
-      if (this.isShowingHistory(key)) this.historyError = "Não foi possível sincronizar o histórico de status.";
+      if (this.isShowingHistory(key)) this.historyError.set("Não foi possível sincronizar o histórico de status.");
     }
   }
 
   private async reloadStatusHistory(): Promise<void> {
-    const key = this.selectedTaskKey;
+    const key = this.selectedTaskKey();
     if (!key) return;
 
     try {
-      const response = await this.taskService.getCachedStatusHistory(key);
+      const response = await changelogCommands.getCachedStatusHistory(key);
       if (!this.isShowingHistory(key)) return;
-      this.statusHistory = response.entries;
-      this.earliestDate = response.earliestDate;
-      this.latestDate = response.latestDate;
-      this.historyError = "";
+      this.statusHistory.set(response.entries);
+      this.earliestDate.set(response.earliestDate);
+      this.latestDate.set(response.latestDate);
+      this.historyError.set("");
     } catch (err) {
       error(`failed to reload status history ${key}: ${err}`);
     }
   }
 
   private isShowingHistory(key: string): boolean {
-    return this.isModalOpen && this.selectedTaskKey === key;
+    return this.isModalOpen() && this.selectedTaskKey() === key;
   }
 
   closeModal(): void {
-    this.isModalOpen = false;
-    this.selectedTaskKey = "";
-    this.statusHistory = [];
-    this.earliestDate = null;
-    this.latestDate = null;
-    this.historyError = "";
-    this.fetchingStatusHistory = false;
-  }
-
-  get dayWorklogPreviewDay(): WorkDayTimeline | null {
-    return this.timeline.find((d) => d.date === this.dayWorklogPreviewDate) ?? null;
-  }
-
-  get dayWorklogPreviewDrafts(): WorklogDraft[] {
-    return this.drafts.get(this.dayWorklogPreviewDate) ?? NO_DRAFTS;
+    this.isModalOpen.set(false);
+    this.selectedTaskKey.set("");
+    this.statusHistory.set([]);
+    this.earliestDate.set(null);
+    this.latestDate.set(null);
+    this.historyError.set("");
+    this.loadingStatusHistory.set(false);
   }
 
   draftCount(day: WorkDayTimeline, state: WorklogDraft["state"]): number {
@@ -469,7 +423,7 @@ export class WorklogGeneratePage implements OnInit, OnDestroy {
 
   showDayWorklog(day: WorkDayTimeline): void {
     if (!this.hasOpenDrafts(day)) {
-      const tasks = day.tasksWorked.filter((task) => this.finalMinutes(day, task) > 0);
+      const tasks = chronologicalOrder(day.tasksWorked.filter((task) => this.finalMinutes(day, task) > 0));
       if (!tasks.length) {
         this.toastService.show("Nenhuma issue com tempo contabilizado neste dia.", "info");
         return;
@@ -494,25 +448,26 @@ export class WorklogGeneratePage implements OnInit, OnDestroy {
       this.generatedDrafts.set(day.date, draftSnapshot(drafts));
     }
 
-    this.dayWorklogPreviewDate = day.date;
-    this.showDayWorklogPreview = true;
+    this.dayWorklogPreviewDate.set(day.date);
+    this.showDayWorklogPreview.set(true);
   }
 
   closeDayWorklogPreview(): void {
-    const date = this.dayWorklogPreviewDate;
+    const date = this.dayWorklogPreviewDate();
     const drafts = this.drafts.get(date) ?? [];
     if (drafts.every((d) => d.state === "sent") || draftSnapshot(drafts) === this.generatedDrafts.get(date)) {
       this.drafts.delete(date);
       this.generatedDrafts.delete(date);
     }
-    this.showDayWorklogPreview = false;
-    this.dayWorklogPreviewDate = "";
+    this.showDayWorklogPreview.set(false);
+    this.dayWorklogPreviewDate.set("");
   }
 
   async onDayWorklogSent(): Promise<void> {
-    const date = this.dayWorklogPreviewDate;
+    const date = this.dayWorklogPreviewDate();
     if ((this.drafts.get(date) ?? []).every((d) => d.state === "sent")) {
       this.adjustments.clearDay(date);
+      this.bumpAdjustments();
     }
     await this.loadTimeline();
   }
@@ -546,4 +501,41 @@ export class WorklogGeneratePage implements OnInit, OnDestroy {
     }
     return starts;
   }
+}
+
+interface Axis {
+  start: number;
+  end: number;
+  ticks: { label: string; left: string }[];
+  guides: string[];
+}
+
+function axisPct(axis: Pick<Axis, "start" | "end">, minutes: number): string {
+  const clamped = Math.min(Math.max(minutes, axis.start), axis.end);
+  return `${(((clamped - axis.start) / (axis.end - axis.start)) * 100).toFixed(3)}%`;
+}
+
+function buildAxis(timeline: WorkDayTimeline[]): Axis {
+  const ranges = timeline.flatMap((day) => [
+    ...day.punchIntervals,
+    ...day.tasksWorked.flatMap((task) => task.countedSegments),
+  ]);
+  const earliest = Math.min(MIN_AXIS_START, ...ranges.map((r) => r.start));
+  const latest = Math.max(MIN_AXIS_END, ...ranges.map((r) => r.end));
+  const bounds = {
+    start: Math.max(0, Math.floor(earliest / 60) * 60),
+    end: Math.min(1440, Math.ceil(latest / 60) * 60),
+  };
+
+  const first = bounds.start / 60;
+  const last = bounds.end / 60;
+  const hours: number[] = [];
+  for (let h = first; h <= last; h++) {
+    if (h === first || h === last || h % 2 === 1) hours.push(h);
+  }
+  return {
+    ...bounds,
+    ticks: hours.map((h) => ({ label: `${String(h).padStart(2, "0")}h`, left: axisPct(bounds, h * 60) })),
+    guides: hours.slice(1, -1).map((h) => axisPct(bounds, h * 60)),
+  };
 }
