@@ -103,8 +103,8 @@ impl WorklogService {
 
         let started_ms = timestamp_ms(&started)?;
         if let Some(id) = self
-            .recover_unrecorded(credentials, user, &worklog.issue_key, started_ms, time_spent_seconds)
-            .await
+            .find_unrecorded(credentials, user, &worklog.issue_key, started_ms, time_spent_seconds)
+            .await?
         {
             info!(
                 "[WORKLOG] Worklog {} já existia no Jira para {}, envio não repetido",
@@ -152,6 +152,12 @@ impl WorklogService {
                 if let Err(e) = self.worklog_repository.insert_unconfirmed(&record).await {
                     log::warn!(
                         "[WORKLOG] Worklog {} enviado, mas não foi possível gravar no cache: {}",
+                        record.jira_worklog_id,
+                        e
+                    );
+                } else if let Err(e) = self.worklog_repository.adopt_as_gama(&record.jira_worklog_id).await {
+                    log::warn!(
+                        "[WORKLOG] Worklog {} enviado, mas não foi possível marcar a origem no cache: {}",
                         record.jira_worklog_id,
                         e
                     );

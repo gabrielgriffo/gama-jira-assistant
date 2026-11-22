@@ -19,6 +19,7 @@ pub async fn pontomais_connect(
     auth_service: State<'_, PontoMaisAuthService>,
     throttle: State<'_, Arc<SyncThrottle>>,
 ) -> AppResult<()> {
+    throttle.clear();
     auth_service
         .connect(PontoMaisLogin::new(login, password), auto_reconnect)
         .await?;

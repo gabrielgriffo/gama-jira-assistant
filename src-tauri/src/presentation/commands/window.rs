@@ -34,6 +34,17 @@ pub fn prepare_main_window(app: &AppHandle) {
     });
 }
 
+pub fn focus_main_window(app: &AppHandle) {
+    let Some(window) = app.get_webview_window(MAIN_WINDOW) else {
+        return;
+    };
+    if window.is_minimized().unwrap_or(false) {
+        let _ = window.unminimize();
+    }
+    let _ = window.show();
+    let _ = window.set_focus();
+}
+
 #[tauri::command]
 pub fn show_main_window(window: WebviewWindow) -> Result<(), String> {
     window.show().map_err(|e| e.to_string())

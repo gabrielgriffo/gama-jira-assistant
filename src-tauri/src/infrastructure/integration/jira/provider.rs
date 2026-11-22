@@ -76,16 +76,20 @@ impl JiraProvider {
                     "[JIRA] limite de {} páginas atingido, interrompendo paginação",
                     MAX_PAGES
                 );
-                break;
+                return Err(incomplete_pagination());
             }
             let changelog = self
                 .get_changelog_page(credentials, issue_key, start_at, max_results)
                 .await?;
-            let fetched = start_at + changelog.values.len();
+            let received = changelog.values.len();
+            let fetched = start_at + received;
             all_histories.extend(changelog.values);
 
             if fetched >= changelog.total {
                 break;
+            }
+            if received == 0 {
+                return Err(incomplete_pagination());
             }
 
             start_at += max_results;
@@ -311,7 +315,7 @@ impl JiraProvider {
     }
 }
 
-fn incomplete_pagination() -> DomainError {
+pub fn incomplete_pagination() -> DomainError {
     DomainError::UnexpectedResponse("a paginação do Jira não terminou; os dados ficariam incompletos".to_string())
 }
 
@@ -447,6 +451,25 @@ mod tests {
         let result = test_provider()
             .get_worklogs_started_between(&test_credentials(&server), "10", None)
             .await;
+
+        assert!(matches!(result, Err(DomainError::UnexpectedResponse(_))));
+    }
+
+    #[tokio::test]
+    async fn changelog_page_that_ends_before_the_total_is_an_error_not_a_partial_result() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/rest/api/3/issue/A-1/changelog"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "startAt": 0,
+                "maxResults": 100,
+                "total": 250,
+                "values": []
+            })))
+            .mount(&server)
+            .await;
+
+        let result = test_provider().get_changelog(&test_credentials(&server), "A-1").await;
 
         assert!(matches!(result, Err(DomainError::UnexpectedResponse(_))));
     }

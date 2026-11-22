@@ -33,7 +33,7 @@ fn is_issue_key(value: &str) -> bool {
         && !number.starts_with('0')
 }
 
-fn sanitize_for_message(value: &str) -> String {
+pub fn sanitize_for_message(value: &str) -> String {
     value.chars().filter(|c| !c.is_control()).take(40).collect()
 }
 

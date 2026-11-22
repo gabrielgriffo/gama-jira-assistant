@@ -16,7 +16,7 @@ impl ChangelogRepository {
     pub async fn save_changes(&self, issue_id: &str, changes: &[IssueChange]) -> Result<(), DomainError> {
         let mut tx = self
             .pool
-            .begin()
+            .begin_with("BEGIN IMMEDIATE")
             .await
             .map_err(|e| DomainError::Storage(e.to_string()))?;
         insert_changes(&mut tx, issue_id, changes).await?;
@@ -29,7 +29,7 @@ impl ChangelogRepository {
         }
         let mut tx = self
             .pool
-            .begin()
+            .begin_with("BEGIN IMMEDIATE")
             .await
             .map_err(|e| DomainError::Storage(e.to_string()))?;
         for (issue_id, issue_changes) in changes {

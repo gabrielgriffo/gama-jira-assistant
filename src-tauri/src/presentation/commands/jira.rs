@@ -10,7 +10,7 @@ use crate::domain::current_user::CurrentUser;
 use crate::domain::date_range::DateRange;
 use crate::domain::error::DomainError;
 use crate::domain::issue::{Issue, Status};
-use crate::domain::issue_key::validate_issue_id_or_key;
+use crate::domain::issue_key::{sanitize_for_message, validate_issue_id_or_key};
 use crate::infrastructure::credentials::CredentialService;
 use crate::infrastructure::database::{JiraConnectionRepository, StatusRepository};
 use crate::infrastructure::events::TauriEventPublisher;
@@ -141,7 +141,11 @@ pub async fn update_jira_statuses_is_development(
         .iter()
         .find(|u| u.status_id.is_empty() || u.status_id.len() > 32 || !u.status_id.bytes().all(|b| b.is_ascii_digit()))
     {
-        return Err(DomainError::InvalidInput(format!("id de status inválido: {}", invalid.status_id.len())).into());
+        return Err(DomainError::InvalidInput(format!(
+            "id de status inválido: {}",
+            sanitize_for_message(&invalid.status_id)
+        ))
+        .into());
     }
     let updates: Vec<(String, bool)> = updates.into_iter().map(|u| (u.status_id, u.is_development)).collect();
     Ok(status_repo.update_multiple_is_development(&updates).await?)

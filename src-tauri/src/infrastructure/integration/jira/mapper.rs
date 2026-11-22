@@ -3,10 +3,10 @@ use crate::domain::changelog::IssueChange;
 use crate::domain::current_user::CurrentUser;
 use crate::domain::date_range::{format_utc, normalize_jira_timestamp};
 use crate::domain::issue::{Issue, Status};
-use chrono::{DateTime, Utc};
+use chrono::DateTime;
 
 fn epoch_millis_to_utc(millis: i64) -> String {
-    format_utc(DateTime::from_timestamp_millis(millis).unwrap_or_else(|| DateTime::<Utc>::default()))
+    format_utc(DateTime::from_timestamp_millis(millis).unwrap_or_default())
 }
 
 pub fn map_myself(dto: JiraMyselfDto) -> CurrentUser {
@@ -19,7 +19,7 @@ pub fn map_myself(dto: JiraMyselfDto) -> CurrentUser {
 }
 
 pub fn map_issue(dto: JiraIssueDto, base_url: &str) -> (Issue, Status) {
-    let browse_url = format!("{}/browse/{}", base_url.trim_end_matches('/'), &dto.key);
+    let browse_url = format!("{}/browse/{}", base_url.trim_end_matches('/'), dto.key);
 
     let category_key = dto
         .fields

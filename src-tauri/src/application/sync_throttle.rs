@@ -103,11 +103,11 @@ impl SyncThrottle {
         false
     }
 
-    pub fn mark_synced(&self, key: &str) {
-        self.last_synced
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .insert(key.to_string(), Instant::now());
+    pub fn mark_synced(&self, key: &str, generation: u64) {
+        let mut last_synced = self.last_synced.lock().unwrap_or_else(|e| e.into_inner());
+        if self.generation() == generation {
+            last_synced.insert(key.to_string(), Instant::now());
+        }
     }
 
     pub fn clear(&self) {
@@ -279,7 +279,7 @@ mod tests {
     #[test]
     fn try_begin_respects_the_minimum_interval() {
         let (throttle, _) = throttle(5);
-        throttle.mark_synced("period:a");
+        throttle.mark_synced("period:a", throttle.generation());
         assert!(throttle.try_begin("period:a".to_string(), false).is_none());
         assert!(throttle.try_begin("period:a".to_string(), true).is_some());
     }
@@ -295,10 +295,19 @@ mod tests {
     }
 
     #[test]
+    fn a_sync_from_before_clear_does_not_mark_the_key_as_fresh() {
+        let (throttle, _) = throttle(5);
+        let generation = throttle.generation();
+        throttle.clear();
+        throttle.mark_synced("issues:a", generation);
+        assert!(throttle.should_sync("issues:a", false));
+    }
+
+    #[test]
     fn syncs_when_never_synced_or_forced() {
         let (throttle, _) = throttle(5);
         assert!(throttle.should_sync("issues:a", false));
-        throttle.mark_synced("issues:a");
+        throttle.mark_synced("issues:a", throttle.generation());
         assert!(!throttle.should_sync("issues:a", false));
         assert!(throttle.should_sync("issues:a", true));
         assert!(throttle.should_sync("issues:b", false));
@@ -307,7 +316,7 @@ mod tests {
     #[test]
     fn zero_interval_always_syncs() {
         let (throttle, _) = throttle(0);
-        throttle.mark_synced("issues:a");
+        throttle.mark_synced("issues:a", throttle.generation());
         assert!(throttle.should_sync("issues:a", false));
     }
 
@@ -316,7 +325,7 @@ mod tests {
         let (throttle, _) = throttle(MANUAL_SYNC_ONLY);
         assert!(!throttle.should_sync("issues:a", false));
         assert!(throttle.should_sync("issues:a", true));
-        throttle.mark_synced("issues:a");
+        throttle.mark_synced("issues:a", throttle.generation());
         assert!(!throttle.should_sync("issues:a", false));
         throttle.set_min_interval_minutes(5);
         assert!(!throttle.should_sync("issues:a", false));
@@ -328,7 +337,7 @@ mod tests {
     #[test]
     fn clear_and_interval_change_take_effect() {
         let (throttle, _) = throttle(5);
-        throttle.mark_synced("issues:a");
+        throttle.mark_synced("issues:a", throttle.generation());
         throttle.set_min_interval_minutes(0);
         assert!(throttle.should_sync("issues:a", false));
         throttle.set_min_interval_minutes(5);

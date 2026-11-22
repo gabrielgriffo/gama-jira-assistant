@@ -4,6 +4,8 @@ use std::time::Duration;
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqliteSynchronous};
 use sqlx::{Row, SqlitePool};
 
+const LATEST_VERSION: i32 = 1;
+
 pub struct DatabaseMigrator {
     pool: SqlitePool,
 }
@@ -16,6 +18,13 @@ impl DatabaseMigrator {
     pub async fn run_migrations(&self) -> Result<(), Box<dyn std::error::Error>> {
         let current_version = self.get_current_version().await?;
         log::info!("Database version: {}", current_version);
+
+        if current_version > LATEST_VERSION {
+            return Err(format!(
+                "o banco de dados foi criado por uma versão mais nova do Gama (schema {current_version}, suportado até {LATEST_VERSION})"
+            )
+            .into());
+        }
 
         if current_version < 1 {
             self.create_schema().await?;
@@ -257,5 +266,20 @@ mod tests {
             .map(|r| r.get("name"))
             .collect();
         assert!(indexes.contains(&"idx_jira_issues_assignee_updated".to_string()));
+    }
+
+    #[tokio::test]
+    async fn refuses_a_database_from_a_newer_version() {
+        let options = SqliteConnectOptions::from_str("sqlite::memory:").unwrap();
+        let pool = SqlitePoolOptions::new()
+            .max_connections(1)
+            .connect_with(options)
+            .await
+            .unwrap();
+        sqlx::query("PRAGMA user_version = 2").execute(&pool).await.unwrap();
+
+        let result = DatabaseMigrator::new(pool).run_migrations().await;
+
+        assert!(result.is_err());
     }
 }

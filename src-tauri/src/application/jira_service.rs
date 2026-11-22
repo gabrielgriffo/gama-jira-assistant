@@ -12,7 +12,7 @@ use crate::domain::issue::{Issue, IssueDetail};
 use crate::domain::ports::{CredentialStore, EventPublisher};
 use crate::infrastructure::database::{ChangelogRepository, IssueRepository, StatusRepository};
 use crate::infrastructure::integration::jira::JiraProvider;
-use crate::infrastructure::integration::jira::MAX_PAGES;
+use crate::infrastructure::integration::jira::{incomplete_pagination, MAX_PAGES};
 
 #[derive(Default)]
 struct IssueSyncState {
@@ -131,11 +131,8 @@ async fn perform_sync_and_get_issues<C: CredentialStore, E: EventPublisher>(
     loop {
         pages += 1;
         if pages > MAX_PAGES {
-            log::warn!(
-                "[JIRA] limite de {} páginas atingido, interrompendo paginação",
-                MAX_PAGES
-            );
-            break;
+            log::warn!("[JIRA] limite de {} páginas atingido na busca de issues", MAX_PAGES);
+            return Err(incomplete_pagination());
         }
         let (page, next_token) = provider
             .search_my_issues_page(&creds, range, &development_status_ids, page_token.clone())
@@ -161,13 +158,18 @@ async fn perform_sync_and_get_issues<C: CredentialStore, E: EventPublisher>(
                 same_token_retry_count += 1;
                 continue;
             }
-            log::warn!("[SEARCH] API retornou o mesmo page_token após retry, parando paginação");
-            break;
+            log::warn!("[SEARCH] API retornou o mesmo page_token após retry");
+            return Err(incomplete_pagination());
         }
 
         same_token_retry_count = 0;
         page_token = next_token;
     }
+
+    let mut seen = HashSet::new();
+    fresh_issues.reverse();
+    fresh_issues.retain(|issue| seen.insert(issue.id.clone()));
+    fresh_issues.reverse();
 
     log::info!(
         "[SYNC] Jira retornou {} issues frescas entre {} e {}",
@@ -219,7 +221,7 @@ async fn refresh_assigned_issues_outside_search(
                 issues.save_issues_with_status(&found, IssueDetail::Basic).await?;
                 confirmed.extend(found.into_iter().map(|(issue, _)| issue.id));
             }
-            Err(err @ (DomainError::InvalidInput(_) | DomainError::NotFound(_))) if chunk.len() > 1 => {
+            Err(err @ (DomainError::InvalidInput(_) | DomainError::NotFound(_))) => {
                 log::warn!(
                     "[SYNC] O Jira recusou a conferência em lote ({}); conferindo as issues uma a uma",
                     err
@@ -336,7 +338,7 @@ where
 
                     match result {
                         Ok((fresh_issues, cached_issues)) => {
-                            service_clone.throttle.mark_synced(&issues_key(&current));
+                            service_clone.throttle.mark_synced(&issues_key(&current), generation);
                             service_clone.events.tasks_synced();
                             drop(current_guard);
                             Arc::new(service_clone.clone())
@@ -398,10 +400,10 @@ where
             tauri::async_runtime::spawn(async move {
                 let _guard = guard;
                 sync_changelog_and_report(
-                    &*provider,
+                    &provider,
                     &*credentials,
-                    &*issues,
-                    &*changelog,
+                    &issues,
+                    &changelog,
                     &*events,
                     &throttle,
                     &issue_key_owned,
@@ -483,7 +485,7 @@ where
             match result {
                 Ok(()) => {
                     for (issue_key, _) in &changed {
-                        service.throttle.mark_synced(&changelog_key(issue_key));
+                        service.throttle.mark_synced(&changelog_key(issue_key), generation);
                         service.events.status_history_synced(issue_key);
                     }
                 }
@@ -571,7 +573,7 @@ async fn sync_changelog_and_report<C, E>(
     .await
     {
         Ok(()) => {
-            throttle.mark_synced(&changelog_key(issue_key));
+            throttle.mark_synced(&changelog_key(issue_key), generation);
             events.status_history_synced(issue_key)
         }
         Err(DomainError::SyncCancelled) => {}
@@ -721,6 +723,60 @@ mod tests {
             .map(|i| i.id)
             .collect();
         assert_eq!(still_mine, vec!["1".to_string()]);
+    }
+
+    #[tokio::test]
+    async fn a_single_rejected_issue_outside_the_search_loses_the_assignee() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/rest/api/3/search/jql"))
+            .and(body_partial_json(json!({"jql": "id in (1)"})))
+            .respond_with(ResponseTemplate::new(400).set_body_json(json!({"errorMessages": ["id inexistente"]})))
+            .mount(&server)
+            .await;
+        Mock::given(method("POST"))
+            .and(path("/rest/api/3/search/jql"))
+            .and(body_partial_json(json!({"jql": "id = 1"})))
+            .respond_with(ResponseTemplate::new(400).set_body_json(json!({"errorMessages": ["id inexistente"]})))
+            .mount(&server)
+            .await;
+
+        let options = SqliteConnectOptions::from_str("sqlite::memory:").unwrap();
+        let pool = SqlitePoolOptions::new()
+            .max_connections(1)
+            .connect_with(options)
+            .await
+            .unwrap();
+        let migrator = DatabaseMigrator::new(pool.clone());
+        migrator.configure_connection().await.unwrap();
+        migrator.run_migrations().await.unwrap();
+        let repo = IssueRepository::new(pool.clone());
+        let mut only = issue("1", "A-1", "3");
+        only.assignee_account_id = Some("me".to_string());
+        repo.save_issues_with_status(&[(only.clone(), development_status())], IssueDetail::Basic)
+            .await
+            .unwrap();
+        let throttle = SyncThrottle::new(5, Arc::new(SilentPublisher));
+        let credentials = JiraCredentials {
+            base_url: server.uri(),
+            email: "me@example.com".to_string(),
+            api_token: zeroize::Zeroizing::new("token".to_string()),
+        };
+
+        refresh_assigned_issues_outside_search(
+            &JiraProvider::new(JiraClient::for_tests()),
+            &credentials,
+            &repo,
+            &throttle,
+            throttle.generation(),
+            "me",
+            &[],
+            &[only],
+        )
+        .await
+        .unwrap();
+
+        assert!(repo.get_all_for_user("me").await.unwrap().is_empty());
     }
 
     fn issue(id: &str, key: &str, status_id: &str) -> Issue {

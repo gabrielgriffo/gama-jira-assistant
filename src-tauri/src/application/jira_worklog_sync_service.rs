@@ -15,8 +15,8 @@ use crate::domain::issue::IssueDetail;
 use crate::domain::ports::CredentialStore;
 use crate::infrastructure::credentials::CredentialService;
 use crate::infrastructure::database::{
-    ChangelogRepository, IssueRepository, PontoMaisEntryRepository, SqliteWorklogRepository, StatusRepository,
-    SyncedCleanup, SyncedWorklog,
+    ChangelogRepository, IssueRepository, PontoMaisEntryRepository, Repositories, SqliteWorklogRepository,
+    StatusRepository, SyncedCleanup, SyncedWorklog,
 };
 use crate::infrastructure::integration::jira::{
     issues_assigned_during_jql, issues_with_my_worklogs_jql, JiraProvider, JiraWorklogDto,
@@ -48,25 +48,21 @@ pub struct JiraWorklogSyncService {
 
 impl JiraWorklogSyncService {
     pub fn new(
-        pontomais_repo: PontoMaisEntryRepository,
+        repos: &Repositories,
         pontomais_provider: PontoMaisProvider,
         pontomais_auth: PontoMaisAuthService,
-        changelog_repo: ChangelogRepository,
-        issue_repo: IssueRepository,
-        status_repo: StatusRepository,
-        worklog_repo: SqliteWorklogRepository,
         jira_provider: JiraProvider,
         credential_service: CredentialService,
         throttle: Arc<SyncThrottle>,
     ) -> Self {
         Self {
-            pontomais_repo: Arc::new(pontomais_repo),
+            pontomais_repo: Arc::new(repos.pontomais_entry.clone()),
             pontomais_provider: Arc::new(pontomais_provider),
             pontomais_auth,
-            changelog_repo: Arc::new(changelog_repo),
-            issue_repo: Arc::new(issue_repo),
-            status_repo: Arc::new(status_repo),
-            worklog_repo: Arc::new(worklog_repo),
+            changelog_repo: Arc::new(repos.changelog.clone()),
+            issue_repo: Arc::new(repos.issue.clone()),
+            status_repo: Arc::new(repos.status.clone()),
+            worklog_repo: Arc::new(repos.worklog.clone()),
             jira_provider: Arc::new(jira_provider),
             credential_service: Arc::new(credential_service),
             throttle,
@@ -82,11 +78,12 @@ impl JiraWorklogSyncService {
         let Some(_guard) = self.throttle.try_begin(key.clone(), force) else {
             return Ok(None);
         };
+        let generation = self.throttle.generation();
         let summary = match self.sync_generate_period(range).await {
             Err(AppError::Domain(DomainError::SyncCancelled)) => return Ok(None),
             other => other?,
         };
-        self.throttle.mark_synced(&key);
+        self.throttle.mark_synced(&key, generation);
         Ok(Some(summary))
     }
 
@@ -112,7 +109,10 @@ impl JiraWorklogSyncService {
             Some(_guard) => self.sync_worklogs(range).await?,
             None => {
                 self.throttle.wait_until_idle(&worklogs_key(range)).await;
-                self.cached_worklog_count(range).await?
+                match self.throttle.try_begin(worklogs_key(range), false) {
+                    Some(_guard) => self.sync_worklogs(range).await?,
+                    None => self.cached_worklog_count(range).await?,
+                }
             }
         };
 
@@ -198,7 +198,7 @@ impl JiraWorklogSyncService {
         )
         .await?;
         for (issue, _) in &issues {
-            self.throttle.mark_synced(&changelog_key(&issue.key));
+            self.throttle.mark_synced(&changelog_key(&issue.key), generation);
         }
 
         Ok(issues.len())
@@ -317,7 +317,7 @@ impl JiraWorklogSyncService {
             to
         );
 
-        self.throttle.mark_synced(&worklogs_key(range));
+        self.throttle.mark_synced(&worklogs_key(range), generation);
         Ok(saved)
     }
 }

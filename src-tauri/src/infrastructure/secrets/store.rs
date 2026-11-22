@@ -71,7 +71,12 @@ fn validate(namespace: &SecretNamespace, key: &str) -> Result<(), SecretStoreErr
     Ok(())
 }
 
+#[cfg(test)]
+static TEST_KEYRING_LOCK: Mutex<()> = Mutex::new(());
+
 fn without_blocking_runtime<T>(operation: impl FnOnce() -> T) -> T {
+    #[cfg(test)]
+    let _serialized = TEST_KEYRING_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     match tokio::runtime::Handle::try_current() {
         Ok(handle) if handle.runtime_flavor() == tokio::runtime::RuntimeFlavor::MultiThread => {
             tokio::task::block_in_place(operation)

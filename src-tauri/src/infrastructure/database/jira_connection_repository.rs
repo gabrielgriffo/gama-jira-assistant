@@ -11,6 +11,35 @@ pub struct JiraConnectionRecord {
     pub time_zone: String,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CachePurge {
+    None,
+    KeepStatuses,
+    All,
+}
+
+async fn purge_jira_cache(
+    tx: &mut sqlx::Transaction<'static, sqlx::Sqlite>,
+    keep_statuses: bool,
+) -> Result<(), DomainError> {
+    let mut statements = vec![
+        "DELETE FROM worklogs",
+        "DELETE FROM issue_changes",
+        "DELETE FROM jira_issues",
+    ];
+    if !keep_statuses {
+        statements.push("DELETE FROM jira_statuses");
+    }
+    for statement in statements {
+        sqlx::query(statement)
+            .execute(&mut **tx)
+            .await
+            .map_err(|e| DomainError::Storage(e.to_string()))?;
+    }
+    log::info!("[DATABASE] Cache local do Jira apagado");
+    Ok(())
+}
+
 #[derive(Clone)]
 pub struct JiraConnectionRepository {
     pool: SqlitePool,
@@ -26,6 +55,7 @@ impl JiraConnectionRepository {
         &self.pool
     }
 
+    #[cfg(test)]
     pub async fn save(
         &self,
         keyring_key: &str,
@@ -35,11 +65,39 @@ impl JiraConnectionRepository {
         display_name: &str,
         time_zone: &str,
     ) -> Result<(), DomainError> {
+        self.save_with_purge(
+            keyring_key,
+            base_url,
+            email,
+            account_id,
+            display_name,
+            time_zone,
+            CachePurge::None,
+        )
+        .await
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub async fn save_with_purge(
+        &self,
+        keyring_key: &str,
+        base_url: &str,
+        email: &str,
+        account_id: &str,
+        display_name: &str,
+        time_zone: &str,
+        purge: CachePurge,
+    ) -> Result<(), DomainError> {
         let mut tx = self
             .pool
-            .begin()
+            .begin_with("BEGIN IMMEDIATE")
             .await
             .map_err(|e| DomainError::Storage(e.to_string()))?;
+        match purge {
+            CachePurge::None => {}
+            CachePurge::KeepStatuses => purge_jira_cache(&mut tx, true).await?,
+            CachePurge::All => purge_jira_cache(&mut tx, false).await?,
+        }
         let previous_time_zone: Option<String> =
             sqlx::query_scalar("SELECT time_zone FROM jira_connection WHERE id = 1")
                 .fetch_optional(&mut *tx)
@@ -78,6 +136,9 @@ impl JiraConnectionRepository {
         }
 
         tx.commit().await.map_err(|e| DomainError::Storage(e.to_string()))?;
+        if purge != CachePurge::None {
+            self.truncate_wal().await;
+        }
         Ok(())
     }
 
@@ -125,23 +186,16 @@ impl JiraConnectionRepository {
             .begin()
             .await
             .map_err(|e| DomainError::Storage(e.to_string()))?;
-        let mut statements = vec![
-            "DELETE FROM worklogs",
-            "DELETE FROM issue_changes",
-            "DELETE FROM jira_issues",
-        ];
-        if !keep_statuses {
-            statements.push("DELETE FROM jira_statuses");
-        }
-        for statement in statements {
-            sqlx::query(statement)
-                .execute(&mut *tx)
-                .await
-                .map_err(|e| DomainError::Storage(e.to_string()))?;
-        }
+        purge_jira_cache(&mut tx, keep_statuses).await?;
         tx.commit().await.map_err(|e| DomainError::Storage(e.to_string()))?;
-        log::info!("[DATABASE] Cache local do Jira apagado");
+        self.truncate_wal().await;
         Ok(())
+    }
+
+    async fn truncate_wal(&self) {
+        if let Err(e) = sqlx::query("PRAGMA wal_checkpoint(TRUNCATE)").execute(&self.pool).await {
+            log::warn!("[DATABASE] Não foi possível compactar o WAL após apagar dados: {e}");
+        }
     }
 
     pub async fn purge_pontomais_data(&self) -> Result<(), DomainError> {
@@ -150,6 +204,19 @@ impl JiraConnectionRepository {
             .await
             .map_err(|e| DomainError::Storage(e.to_string()))?;
         log::info!("[DATABASE] Batidas do PontoMais apagadas do cache local");
+        self.truncate_wal().await;
+        Ok(())
+    }
+
+    pub async fn activate(&self) -> Result<(), DomainError> {
+        sqlx::query(
+            "UPDATE jira_connection
+             SET is_active = 1, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+             WHERE id = 1",
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| DomainError::Storage(e.to_string()))?;
         Ok(())
     }
 
@@ -294,6 +361,53 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(day, "2026-11-18");
+    }
+
+    #[tokio::test]
+    async fn saving_with_purge_replaces_the_cache_in_the_same_step() {
+        let repo = repository_with_cache().await;
+
+        repo.save_with_purge(
+            "k",
+            "https://y.atlassian.net",
+            "me@y.com",
+            "other",
+            "Outro",
+            "UTC",
+            CachePurge::All,
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(count(&repo, "jira_issues").await, 0);
+        assert_eq!(count(&repo, "jira_statuses").await, 0);
+        assert_eq!(repo.get_identity().await.unwrap().unwrap().1, "other");
+    }
+
+    #[tokio::test]
+    async fn saving_without_purge_keeps_the_cache() {
+        let repo = repository_with_cache().await;
+
+        repo.save("k", "https://x.atlassian.net", "me@x.com", "me", "Eu", "UTC")
+            .await
+            .unwrap();
+
+        assert_eq!(count(&repo, "jira_issues").await, 1);
+        assert_eq!(count(&repo, "jira_statuses").await, 1);
+    }
+
+    #[tokio::test]
+    async fn activate_restores_a_deactivated_connection() {
+        let repo = repository_with_cache().await;
+        repo.save("k", "https://x.atlassian.net", "me@x.com", "me", "Eu", "UTC")
+            .await
+            .unwrap();
+        repo.deactivate().await.unwrap();
+        assert!(repo.get_active().await.unwrap().is_none());
+
+        repo.activate().await.unwrap();
+
+        assert!(repo.get_active().await.unwrap().is_some());
     }
 
     #[tokio::test]

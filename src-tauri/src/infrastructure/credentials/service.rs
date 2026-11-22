@@ -7,7 +7,7 @@ use crate::domain::credentials::JiraCredentials;
 use crate::domain::error::DomainError;
 use crate::domain::pontomais::credentials::{PontoMaisCredentials, PontoMaisLogin};
 use crate::domain::ports::CredentialStore;
-use crate::infrastructure::database::JiraConnectionRepository;
+use crate::infrastructure::database::{CachePurge, JiraConnectionRepository};
 use crate::infrastructure::secrets::{SecretNamespace, SecretStore, SecretStoreError};
 
 const PONTOMAIS_CREDENTIALS_KEY: &str = "credentials";
@@ -41,25 +41,14 @@ impl CredentialService {
     pub fn new(secrets: SecretStore, connections: JiraConnectionRepository) -> Self {
         Self { secrets, connections }
     }
-}
 
-impl CredentialStore for CredentialService {
-    async fn save_jira_credentials(
+    async fn store_and_save(
         &self,
         credentials: &JiraCredentials,
         user: &crate::domain::current_user::CurrentUser,
+        connection_id: &str,
+        purge: CachePurge,
     ) -> Result<(), DomainError> {
-        let connection_id = uuid::Uuid::new_v4().to_string();
-        let previous_keyring_key = self.connections.get_keyring_key().await?;
-
-        if let Some((previous_base_url, previous_account_id)) = self.connections.get_identity().await? {
-            if previous_base_url != credentials.base_url || previous_account_id != user.account_id {
-                log::info!("[CREDENTIALS] Conta ou instância do Jira diferente da anterior; limpando cache local");
-                let same_instance = previous_base_url == credentials.base_url;
-                self.connections.purge_cached_jira_data(same_instance).await?;
-            }
-        }
-
         let secret = StoredJiraSecret {
             base_url: credentials.base_url.clone(),
             email: credentials.email.clone(),
@@ -72,22 +61,64 @@ impl CredentialStore for CredentialService {
         drop(secret);
 
         self.secrets
-            .store(&SecretNamespace::Jira, &connection_id, secret_json)
+            .store(&SecretNamespace::Jira, connection_id, secret_json)
             .map_err(|e| DomainError::Storage(e.to_string()))?;
 
         if let Err(e) = self
             .connections
-            .save(
-                &connection_id,
+            .save_with_purge(
+                connection_id,
                 &credentials.base_url,
                 &credentials.email,
                 &user.account_id,
                 &user.display_name,
                 &user.time_zone,
+                purge,
             )
             .await
         {
-            let _ = self.secrets.delete(&SecretNamespace::Jira, &connection_id);
+            let _ = self.secrets.delete(&SecretNamespace::Jira, connection_id);
+            return Err(e);
+        }
+        Ok(())
+    }
+}
+
+impl CredentialStore for CredentialService {
+    async fn save_jira_credentials(
+        &self,
+        credentials: &JiraCredentials,
+        user: &crate::domain::current_user::CurrentUser,
+    ) -> Result<(), DomainError> {
+        let connection_id = uuid::Uuid::new_v4().to_string();
+        let previous_keyring_key = self.connections.get_keyring_key().await?;
+
+        let purge = match self.connections.get_identity().await? {
+            Some((previous_base_url, previous_account_id))
+                if previous_base_url != credentials.base_url || previous_account_id != user.account_id =>
+            {
+                log::info!(
+                    "[CREDENTIALS] Conta ou instância do Jira diferente da anterior; o cache local será apagado"
+                );
+                if previous_base_url == credentials.base_url {
+                    CachePurge::KeepStatuses
+                } else {
+                    CachePurge::All
+                }
+            }
+            _ => CachePurge::None,
+        };
+        let deactivated = purge != CachePurge::None && self.connections.get_active().await?.is_some();
+        if deactivated {
+            self.connections.deactivate().await?;
+        }
+
+        if let Err(e) = self.store_and_save(credentials, user, &connection_id, purge).await {
+            if deactivated {
+                if let Err(reactivate) = self.connections.activate().await {
+                    log::warn!("[CREDENTIALS] falha ao reativar a conexão anterior: {reactivate}");
+                }
+            }
             return Err(e);
         }
 

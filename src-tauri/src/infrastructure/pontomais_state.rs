@@ -1,6 +1,9 @@
 use serde::{Deserialize, Serialize};
 use std::fs;
+use std::io::Write;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Mutex;
 
 const MAX_STATE_FILE_BYTES: u64 = 64 * 1024;
 
@@ -18,24 +21,45 @@ pub struct PontoMaisState {
 
 pub struct PontoMaisStateStore {
     file_path: PathBuf,
+    unreadable: AtomicBool,
+    io_lock: Mutex<()>,
 }
 
 impl PontoMaisStateStore {
     pub fn new(app_data_dir: PathBuf) -> Self {
         Self {
             file_path: app_data_dir.join("pontomais_state.json"),
+            unreadable: AtomicBool::new(false),
+            io_lock: Mutex::new(()),
         }
     }
 
     pub fn load(&self) -> PontoMaisState {
-        let (state, persist) = resolve_state(self.read());
+        let _guard = self.io_lock.lock().unwrap_or_else(|e| e.into_inner());
+        self.load_from(self.read())
+    }
+
+    pub fn save(&self, state: &PontoMaisState) {
+        let _guard = self.io_lock.lock().unwrap_or_else(|e| e.into_inner());
+        self.save_unlocked(state);
+    }
+
+    fn load_from(&self, read: std::io::Result<Option<String>>) -> PontoMaisState {
+        self.unreadable.store(read.is_err(), Ordering::SeqCst);
+        let (state, persist) = resolve_state(read);
         if persist {
-            self.save(&state);
+            self.save_unlocked(&state);
         }
         state
     }
 
-    pub fn save(&self, state: &PontoMaisState) {
+    fn save_unlocked(&self, state: &PontoMaisState) {
+        if self.unreadable.load(Ordering::SeqCst) {
+            log::warn!(
+                "[PONTOMAIS] estado local ilegível na última leitura; gravação ignorada para preservar o arquivo"
+            );
+            return;
+        }
         if let Err(e) = self.write(state) {
             log::error!("[PONTOMAIS] falha ao gravar o estado local: {e}");
         }
@@ -59,7 +83,10 @@ impl PontoMaisStateStore {
         }
         let temp_path = self.file_path.with_extension("json.tmp");
         let json = serde_json::to_string_pretty(state).map_err(std::io::Error::other)?;
-        fs::write(&temp_path, json)?;
+        let mut file = fs::File::create(&temp_path)?;
+        file.write_all(json.as_bytes())?;
+        file.sync_all()?;
+        drop(file);
         fs::rename(&temp_path, &self.file_path)
     }
 }
@@ -132,6 +159,26 @@ mod tests {
 
         assert!(!persist);
         assert!(uuid::Uuid::parse_str(&state.uuid).is_ok());
+    }
+
+    #[test]
+    fn saving_after_a_failed_read_keeps_the_file_untouched() {
+        let dir = temp_dir();
+        let saved = r#"{"uuid":"6f9619ff-8b86-4d01-b42d-00cf4fc964ff","account":"dev@acme.com","autoReconnect":true}"#;
+        fs::write(dir.join("pontomais_state.json"), saved).unwrap();
+        let store = PontoMaisStateStore::new(dir.clone());
+
+        let mut state = store.load_from(Err(std::io::Error::other("arquivo bloqueado")));
+        state.last_used_at = Some(1);
+        store.save(&state);
+
+        assert_eq!(fs::read_to_string(dir.join("pontomais_state.json")).unwrap(), saved);
+        let reloaded = store.load();
+        assert!(reloaded.auto_reconnect);
+        store.save(&reloaded);
+        assert!(store.load().auto_reconnect);
+
+        fs::remove_dir_all(dir).ok();
     }
 
     #[test]

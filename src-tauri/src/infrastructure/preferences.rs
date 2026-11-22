@@ -131,6 +131,13 @@ fn assign<T: DeserializeOwned>(slot: &mut T, value: &serde_json::Value) -> bool 
     }
 }
 
+fn write_synced(path: &std::path::Path, contents: &[u8]) -> std::io::Result<()> {
+    use std::io::Write;
+    let mut file = fs::File::create(path)?;
+    file.write_all(contents)?;
+    file.sync_all()
+}
+
 pub struct PreferencesManager {
     file_path: PathBuf,
     write_lock: Mutex<()>,
@@ -174,7 +181,7 @@ impl PreferencesManager {
             .and_then(|value| serde_json::to_string_pretty(&value))
             .map_err(|e| DomainError::Storage(format!("Failed to serialize preferences: {}", e)))?;
 
-        fs::write(&temp_path, contents)
+        write_synced(&temp_path, contents.as_bytes())
             .map_err(|e| DomainError::Storage(format!("Failed to write preferences temp file: {}", e)))?;
 
         fs::rename(&temp_path, &self.file_path)
@@ -192,7 +199,7 @@ impl PreferencesManager {
 
     pub fn update_min_sync_interval(&self, minutes: u32) -> Result<(), DomainError> {
         if minutes > MAX_MIN_SYNC_INTERVAL_MINUTES && minutes != MANUAL_SYNC_ONLY {
-            return Err(DomainError::ParseError(format!(
+            return Err(DomainError::InvalidInput(format!(
                 "intervalo mínimo de sincronização inválido: {minutes}"
             )));
         }
@@ -208,7 +215,7 @@ impl PreferencesManager {
             "tasks" => "tasksRange",
             "worklogGenerate" => "worklogGenerateRange",
             "worklogHistory" => "worklogHistoryRange",
-            other => return Err(DomainError::ParseError(format!("tela desconhecida: {other}"))),
+            other => return Err(DomainError::InvalidInput(format!("tela desconhecida: {other}"))),
         };
         self.update(|prefs| {
             prefs.unparsed.remove(key);

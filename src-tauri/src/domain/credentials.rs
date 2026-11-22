@@ -43,14 +43,41 @@ pub fn normalize_jira_base_url(raw: &str) -> Result<String, DomainError> {
         .map(str::to_ascii_lowercase)
         .ok_or_else(|| invalid("URL do Jira sem host"))?;
 
-    let allowed = ALLOWED_JIRA_HOST_SUFFIXES
-        .iter()
-        .any(|suffix| host.len() > suffix.len() && host.ends_with(suffix));
-    if !allowed {
+    if !is_allowed_jira_host(&host) {
         return Err(invalid("o endereço deve ser um site Jira Cloud (*.atlassian.net)"));
     }
 
     Ok(format!("https://{host}"))
+}
+
+fn is_allowed_jira_host(host: &str) -> bool {
+    ALLOWED_JIRA_HOST_SUFFIXES
+        .iter()
+        .any(|suffix| host.len() > suffix.len() && host.ends_with(suffix))
+}
+
+pub fn validate_jira_page_url(raw: &str) -> Result<Url, DomainError> {
+    let invalid = || DomainError::InvalidInput("endereço do Jira inválido".to_string());
+    let url = Url::parse(raw.trim()).map_err(|_| invalid())?;
+    let safe = url.scheme() == "https"
+        && url.username().is_empty()
+        && url.password().is_none()
+        && url.port().is_none()
+        && url
+            .host_str()
+            .is_some_and(|host| is_allowed_jira_host(&host.to_ascii_lowercase()));
+    if safe {
+        Ok(url)
+    } else {
+        Err(invalid())
+    }
+}
+
+pub fn belongs_to_connection(page: &Url, base_url: &str) -> bool {
+    let connected = Url::parse(base_url)
+        .ok()
+        .and_then(|base| base.host_str().map(str::to_ascii_lowercase));
+    connected.is_some() && connected == page.host_str().map(str::to_ascii_lowercase)
 }
 
 #[cfg(test)]
@@ -86,6 +113,44 @@ mod tests {
             "acme.atlassian.net",
         ] {
             assert!(normalize_jira_base_url(url).is_err(), "{url} deveria ser rejeitada");
+        }
+    }
+
+    #[test]
+    fn accepts_jira_cloud_pages() {
+        for url in [
+            "https://acme.atlassian.net/browse/ABC-1",
+            "https://ACME.atlassian.net/browse/ABC-1?focusedWorklogId=10",
+            "https://acme.jira.com/browse/ABC-1",
+        ] {
+            assert!(validate_jira_page_url(url).is_ok(), "{url} deveria ser aceita");
+        }
+    }
+
+    #[test]
+    fn only_pages_of_the_connected_site_belong_to_the_connection() {
+        let page = validate_jira_page_url("https://ACME.atlassian.net/browse/ABC-1").unwrap();
+        assert!(belongs_to_connection(&page, "https://acme.atlassian.net"));
+        assert!(!belongs_to_connection(&page, "https://other.atlassian.net"));
+        assert!(!belongs_to_connection(&page, ""));
+    }
+
+    #[test]
+    fn rejects_pages_outside_jira_cloud() {
+        for url in [
+            "http://acme.atlassian.net/browse/ABC-1",
+            "https://evil.com/acme.atlassian.net/browse/ABC-1",
+            "https://acme.atlassian.net.evil.com/browse/ABC-1",
+            "https://acme.atlassian.net@evil.com/browse/ABC-1",
+            "https://user:pass@acme.atlassian.net/browse/ABC-1",
+            "https://acme.atlassian.net:8443/browse/ABC-1",
+            "https://atlassian.net/browse/ABC-1",
+            "file:///C:/Windows/System32/calc.exe",
+            "javascript:alert(1)",
+            "acme.atlassian.net/browse/ABC-1",
+            "",
+        ] {
+            assert!(validate_jira_page_url(url).is_err(), "{url} deveria ser rejeitada");
         }
     }
 }

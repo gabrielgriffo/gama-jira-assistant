@@ -38,7 +38,7 @@ impl WorkDay {
 
         times.sort_unstable();
 
-        times.chunks_exact(2).map(|pair| pair[1] - pair[0]).sum()
+        times.as_chunks::<2>().0.iter().map(|pair| pair[1] - pair[0]).sum()
     }
 
     fn parse_time(time: &str) -> Option<u32> {

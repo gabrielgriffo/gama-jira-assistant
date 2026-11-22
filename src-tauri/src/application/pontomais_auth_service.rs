@@ -70,14 +70,7 @@ impl PontoMaisAuthService {
 
         self.credentials.save_pontomais_credentials(&credentials)?;
 
-        let password_result = if auto_reconnect {
-            self.credentials.save_pontomais_password(&login)
-        } else {
-            self.credentials.delete_pontomais_password()
-        };
-        if let Err(e) = password_result {
-            log::error!("[PONTOMAIS] Falha ao atualizar a senha no cofre: {e}");
-        }
+        let auto_reconnect = auto_reconnect && self.store_password_for_reconnect(&login, auto_reconnect);
 
         state.account = Some(credentials.email.clone());
         state.auto_reconnect = auto_reconnect;
@@ -91,6 +84,25 @@ impl PontoMaisAuthService {
             if auto_reconnect { "ativada" } else { "desativada" }
         );
         Ok(())
+    }
+
+    fn store_password_for_reconnect(&self, login: &PontoMaisLogin, auto_reconnect: bool) -> bool {
+        if !auto_reconnect {
+            if let Err(e) = self.credentials.delete_pontomais_password() {
+                log::error!("[PONTOMAIS] Falha ao remover a senha do cofre: {e}");
+            }
+            return false;
+        }
+        match self.credentials.save_pontomais_password(login) {
+            Ok(()) => true,
+            Err(e) => {
+                log::error!("[PONTOMAIS] Falha ao guardar a senha no cofre; reconexão automática desativada: {e}");
+                if let Err(e) = self.credentials.delete_pontomais_password() {
+                    log::error!("[PONTOMAIS] Falha ao remover a senha anterior do cofre: {e}");
+                }
+                false
+            }
+        }
     }
 
     pub async fn disconnect(&self) -> Result<(), DomainError> {
