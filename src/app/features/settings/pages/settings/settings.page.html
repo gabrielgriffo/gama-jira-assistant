@@ -61,7 +61,7 @@
             @if (jiraLoading()) {
               <span>Carregando…</span>
             } @else if (jiraError() && !showLoginForm()) {
-              <span class="form-error" [title]="jiraError()">{{ jiraError() }}</span>
+              <span class="form-error">{{ jiraError() }}</span>
             } @else if (jiraState().connected && jiraState().user && jiraState().instance) {
               <span>Conectado como {{ jiraState().user?.displayName }} em {{ jiraState().instance }}</span>
             } @else if (jiraState().connected && jiraState().email && !jiraState().user) {
@@ -69,7 +69,7 @@
             } @else if (jiraState().connected) {
               <span>Conectado</span>
             } @else if (jiraStateError()) {
-              <span class="form-error" [title]="jiraStateError()">{{ jiraStateError() }}</span>
+              <span class="form-error">{{ jiraStateError() }}</span>
             } @else {
               <span>Desconectado. Conecte-se para utilizar o Gama.</span>
             }
@@ -90,7 +90,7 @@
           <div class="row-text">
             <b>PontoMais</b>
             @if (pontoMaisError() && !showPontoMaisForm()) {
-              <span class="form-error" [title]="pontoMaisError()">{{ pontoMaisError() }}</span>
+              <span class="form-error">{{ pontoMaisError() }}</span>
             } @else if (pontoMaisState().connected) {
               <span>Conectado como {{ pontoMaisState().account }}</span>
             } @else {
@@ -346,7 +346,7 @@
             [disabled]="jiraLoading()"
           />
         </label>
-        <p class="form-error msg-slot" aria-live="polite" [title]="jiraError() ?? ''">{{ jiraError() }}</p>
+        <p class="form-error msg-slot" aria-live="polite">{{ jiraError() }}</p>
       </div>
       <div class="dialog-foot">
         <button type="button" class="btn quiet" (click)="closeLoginForm()" [disabled]="jiraLoading()">Cancelar</button>
@@ -414,7 +414,7 @@
           <input class="cb" type="checkbox" name="pontoMaisAutoReconnect" [(ngModel)]="pontoMaisAutoReconnect" />
           <span>Reconectar automaticamente quando a sessão expirar</span>
         </label>
-        <p class="form-error msg-slot" aria-live="polite" [title]="pontoMaisError() ?? ''">{{ pontoMaisError() }}</p>
+        <p class="form-error msg-slot" aria-live="polite">{{ pontoMaisError() }}</p>
       </div>
       <div class="dialog-foot">
         <button type="button" class="btn quiet" (click)="closePontoMaisForm()" [disabled]="pontoMaisLoading()">

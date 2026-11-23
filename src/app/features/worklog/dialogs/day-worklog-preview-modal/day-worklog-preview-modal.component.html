@@ -102,7 +102,7 @@
                   >
                     <app-icon name="close" class="ic" />
                   </button>
-                  <div class="row-err" [title]="rowError(draft)">{{ rowError(draft) }}</div>
+                  <div class="row-err">{{ rowError(draft) }}</div>
                 </div>
               }
             </div>
@@ -136,7 +136,7 @@
         }
         @if (!confirming() && !allSent) {
           @if (footerAlert(); as alert) {
-            <span class="grow" [class]="alert.kind" [title]="alert.text">{{ alert.text }}</span>
+            <span class="grow" [class]="alert.kind">{{ alert.text }}</span>
           } @else {
             <span class="grow"
               >Total: {{ hfmt(total()) }} de {{ hfmt(day()?.totalMinutes ?? 0) }} registradas no ponto</span

@@ -47,7 +47,7 @@
           </div>
           @if (jiraConnected()) {
             <div class="account">
-              <div class="connected" [title]="jiraAccount()">
+              <div class="connected">
                 <app-icon name="check" class="ic" />
                 <span>Conectado como {{ jiraAccount() }}</span>
               </div>
@@ -57,7 +57,7 @@
               </button>
             </div>
             @if (jiraError()) {
-              <p class="form-error" [title]="jiraError()">{{ jiraError() }}</p>
+              <p class="form-error">{{ jiraError() }}</p>
             }
             <div class="pane-foot">
               <span class="grow"></span>
@@ -98,7 +98,7 @@
                   [disabled]="jiraLoading()"
                 />
               </label>
-              <p class="form-error msg-slot" [title]="jiraError()">{{ jiraError() }}</p>
+              <p class="form-error msg-slot">{{ jiraError() }}</p>
             </div>
             <div class="pane-foot">
               <button type="button" class="btn quiet" (click)="askSkip('jira')" [disabled]="jiraLoading()">
@@ -125,7 +125,7 @@
           </div>
           @if (pontoMaisConnected()) {
             <div class="account">
-              <div class="connected" [title]="pontoMaisAccount()">
+              <div class="connected">
                 <app-icon name="check" class="ic" />
                 <span>Conectado como {{ pontoMaisAccount() }}</span>
               </div>
@@ -135,7 +135,7 @@
               </button>
             </div>
             @if (pontoMaisError()) {
-              <p class="form-error" [title]="pontoMaisError()">{{ pontoMaisError() }}</p>
+              <p class="form-error">{{ pontoMaisError() }}</p>
             }
             <div class="pane-foot">
               <span class="grow"></span>
@@ -177,7 +177,7 @@
                 />
                 <span>Reconectar automaticamente quando a sessão expirar</span>
               </label>
-              <p class="form-error msg-slot" [title]="pontoMaisError()">{{ pontoMaisError() }}</p>
+              <p class="form-error msg-slot">{{ pontoMaisError() }}</p>
             </div>
             <div class="pane-foot">
               <button type="button" class="btn quiet" (click)="askSkip('pontomais')" [disabled]="pontoMaisLoading()">
@@ -306,7 +306,7 @@
                   <span class="step-text">
                     <span>{{ stepText(s) }}</span>
                     @if (s.status === "failed") {
-                      <span class="form-error" [title]="s.error ?? ''">{{ s.error }}</span>
+                      <span class="form-error">{{ s.error }}</span>
                     }
                   </span>
                 </li>

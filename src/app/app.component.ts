@@ -11,6 +11,7 @@ import { SettingsDialogComponent } from "./features/settings/dialogs/settings-di
 import { SettingsDialogService } from "./features/settings/settings-dialog.service";
 import { IconComponent } from "./shared/ui/icon/icon.component";
 import { ToastComponent } from "./shared/ui/toast/toast.component";
+import { TruncationTooltipComponent } from "./shared/ui/truncation-tooltip/truncation-tooltip.component";
 import { ThemeService } from "./core/preferences/theme.service";
 import { UpdateService } from "./core/update/update.service";
 import { OnboardingComponent } from "./features/onboarding/onboarding.component";
@@ -26,6 +27,7 @@ import { OnboardingService } from "./features/onboarding/onboarding.service";
     TitlebarComponent,
     SettingsDialogComponent,
     ToastComponent,
+    TruncationTooltipComponent,
     OnboardingComponent,
   ],
   templateUrl: "./app.component.html",
