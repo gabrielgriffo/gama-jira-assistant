@@ -48,15 +48,19 @@ input[type="checkbox"].cb:checked {
     center / 100% 100% no-repeat;
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.25 4.5L19 7'/%3E%3C/svg%3E")
     center / 100% 100% no-repeat;
-  transform: scale(0);
-  transition: transform 0.12s;
+  opacity: 0;
+  transform: scale(0.9);
+  transition:
+    transform 120ms var(--ease-out),
+    opacity 120ms var(--ease-out);
 }
 .cb:checked::after {
+  opacity: 1;
   transform: scale(1);
 }
 @media (prefers-reduced-motion: reduce) {
-  .cb,
   .cb::after {
-    transition: none;
+    transform: none;
+    transition: opacity 120ms var(--ease-out);
   }
 }

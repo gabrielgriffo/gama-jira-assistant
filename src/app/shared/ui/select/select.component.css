@@ -29,7 +29,7 @@
   width: 14px;
   height: 14px;
   color: var(--muted);
-  transition: transform 0.15s;
+  transition: transform 160ms var(--ease-out);
 }
 .select-btn[aria-expanded="true"] .chev {
   transform: rotate(180deg);

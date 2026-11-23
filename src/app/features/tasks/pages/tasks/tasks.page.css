@@ -37,9 +37,6 @@
   pointer-events: none;
   opacity: 0;
   visibility: hidden;
-  animation: more-above linear both;
-  animation-timeline: scroll();
-  animation-range: 0 48px;
 }
 .table-scroll::after {
   content: "";
@@ -52,9 +49,6 @@
   pointer-events: none;
   opacity: 0;
   visibility: hidden;
-  animation: more-below linear both;
-  animation-timeline: scroll();
-  animation-range: calc(100% - 48px) 100%;
 }
 .to-top,
 .to-bottom {
@@ -72,23 +66,42 @@
   opacity: 0;
   visibility: hidden;
   transition: background-color 0.12s;
-  animation-timeline: scroll();
 }
 .to-top {
   top: 40px;
   margin: 0 auto -28px;
-  animation-name: more-above;
-  animation-timing-function: linear;
-  animation-fill-mode: both;
-  animation-range: 0 48px;
 }
 .to-bottom {
   bottom: 8px;
   margin: -28px auto 0;
-  animation-name: more-below;
-  animation-timing-function: linear;
-  animation-fill-mode: both;
-  animation-range: calc(100% - 48px) 100%;
+}
+@supports (animation-timeline: scroll()) {
+  .table-scroll::before {
+    animation: more-above linear both;
+    animation-timeline: scroll();
+    animation-range: 0 48px;
+  }
+  .table-scroll::after {
+    animation: more-below linear both;
+    animation-timeline: scroll();
+    animation-range: calc(100% - 48px) 100%;
+  }
+  .to-top,
+  .to-bottom {
+    animation-timeline: scroll();
+  }
+  .to-top {
+    animation-name: more-above;
+    animation-timing-function: linear;
+    animation-fill-mode: both;
+    animation-range: 0 48px;
+  }
+  .to-bottom {
+    animation-name: more-below;
+    animation-timing-function: linear;
+    animation-fill-mode: both;
+    animation-range: calc(100% - 48px) 100%;
+  }
 }
 :is(.to-top, .to-bottom):hover {
   background: var(--surface-3-hover);
@@ -196,7 +209,7 @@
   margin: 0;
   border-radius: 999px;
   background: var(--surface-3);
-  transition: background-color 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: background-color 200ms var(--ease-out);
 }
 .switch::after {
   content: "";
@@ -209,8 +222,8 @@
   background: var(--surface);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
   transition:
-    transform 0.2s cubic-bezier(0.22, 1, 0.36, 1),
-    width 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+    transform 200ms var(--ease-out),
+    width 200ms var(--ease-out);
 }
 .switch:checked {
   background: var(--primary);

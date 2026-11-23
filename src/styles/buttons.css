@@ -118,3 +118,22 @@
 .btn.stable > .off {
   visibility: hidden;
 }
+.btn,
+.icon-btn:not(app-titlebar *) {
+  transition: transform 160ms var(--ease-out);
+}
+.btn:active:not(:disabled, :focus-visible),
+.icon-btn:active:not(:disabled, :focus-visible, app-titlebar *) {
+  transform: scale(0.97);
+}
+@media (prefers-reduced-motion: reduce) {
+  .btn,
+  .icon-btn {
+    transition: none;
+  }
+  .btn:active:not(:disabled, :focus-visible),
+  .icon-btn:active:not(:disabled, :focus-visible, app-titlebar *) {
+    transform: none;
+    opacity: 0.85;
+  }
+}

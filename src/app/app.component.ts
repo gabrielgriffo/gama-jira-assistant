@@ -1,7 +1,9 @@
+import { DOCUMENT } from "@angular/common";
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject } from "@angular/core";
 import { RouterOutlet, RouterLink, RouterLinkActive } from "@angular/router";
 
 import { JiraStateService } from "./core/auth/jira-state.service";
+import { trackInputModality } from "./core/input/input-modality";
 import { PontoMaisStateService } from "./core/pontomais/pontomais-state.service";
 import { SyncStateService } from "./core/sync/sync-state.service";
 import { TitlebarComponent } from "./core/layout/titlebar/titlebar.component";
@@ -50,6 +52,10 @@ export class AppComponent implements OnInit {
     if (!state.connected || !state.instance) return "Conecte-se em Configurações";
     return state.instance.replace(/^https?:\/\//, "").replace(/\/+$/, "");
   });
+
+  constructor() {
+    trackInputModality(inject(DOCUMENT));
+  }
 
   ngOnInit() {
     this.theme.initialize();

@@ -62,6 +62,7 @@ export class OnboardingComponent {
   readonly skipped = signal<ReadonlySet<SetupStep>>(new Set());
   readonly confirmSkip = signal<SkippableStep | "all" | null>(null);
   readonly finishing = signal(false);
+  protected readonly stepped = signal(false);
   private readonly themeSeen = signal(this.onboarding.themeSeen);
   readonly stepCount = ORDER.length;
 
@@ -178,6 +179,7 @@ export class OnboardingComponent {
       this.themeSeen.set(true);
       this.onboarding.markThemeSeen();
     }
+    this.stepped.set(true);
     this.step.set(step);
   }
 
@@ -267,6 +269,7 @@ export class OnboardingComponent {
   startImport(): void {
     if (!this.validRange() || !this.anyAccount()) return;
     this.unskip("date");
+    this.stepped.set(true);
     this.step.set("import");
     const { from, to } = this.importRange();
     void this.firstImport.start({ from, to }, this.jiraConnected(), this.pontoMaisConnected());

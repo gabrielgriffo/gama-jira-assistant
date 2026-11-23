@@ -18,7 +18,7 @@
         </button>
       </nav>
       @if (update.showBanner()) {
-        <div class="update-card" role="status">
+        <div class="update-card" role="status" animate.enter="card-in">
           <b>Atualização disponível</b>
           <div class="update-actions">
             <button type="button" class="btn quiet small" (click)="update.dismiss()">Adiar</button>
@@ -27,7 +27,7 @@
         </div>
       }
       @if (update.status().phase === "installing") {
-        <div class="update-card" role="status">
+        <div class="update-card" role="status" animate.enter="card-in">
           <b><span class="spin"></span>Instalando atualização…</b>
         </div>
       }

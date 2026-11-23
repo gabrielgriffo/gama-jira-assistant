@@ -373,18 +373,18 @@ input:disabled {
   pointer-events: none;
 }
 .overlay {
-  animation: overlay-in 180ms ease-out;
+  animation: overlay-in 180ms var(--ease-out);
 }
 .overlay > .dialog {
-  animation: dialog-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation: dialog-in 220ms var(--ease-out);
 }
 .modal-leave.overlay,
 .modal-leave .overlay {
-  animation: overlay-out 150ms ease-in forwards;
+  animation: overlay-out 150ms var(--ease-out) forwards;
 }
 .modal-leave.overlay > .dialog,
 .modal-leave .overlay > .dialog {
-  animation: dialog-out 150ms ease-in forwards;
+  animation: dialog-out 150ms var(--ease-out) forwards;
 }
 .modal-leave:not(.overlay) {
   animation: modal-hold 150ms;
@@ -421,11 +421,11 @@ input:disabled {
 }
 .select-pop,
 .range-pop {
-  animation: pop-in 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation: pop-in 160ms var(--ease-out);
 }
 .select-pop.pop-leave,
 .pop-leave > .range-pop {
-  animation: pop-out 120ms ease-in forwards;
+  animation: pop-out 120ms var(--ease-out) forwards;
 }
 gama-date-range-panel.pop-leave {
   animation: modal-hold 120ms;
@@ -513,17 +513,23 @@ gama-date-range-panel.pop-leave {
   top: -4px;
   margin-bottom: -32px;
   background: linear-gradient(to top, transparent, var(--surface));
-  animation: fade-more-above linear both;
-  animation-timeline: scroll();
-  animation-range: 0 40px;
 }
 .scroll-fade::after {
   bottom: -4px;
   margin-top: -32px;
   background: linear-gradient(to bottom, transparent, var(--surface));
-  animation: fade-more-below linear both;
-  animation-timeline: scroll();
-  animation-range: calc(100% - 40px) 100%;
+}
+@supports (animation-timeline: scroll()) {
+  .scroll-fade::before {
+    animation: fade-more-above linear both;
+    animation-timeline: scroll();
+    animation-range: 0 40px;
+  }
+  .scroll-fade::after {
+    animation: fade-more-below linear both;
+    animation-timeline: scroll();
+    animation-range: calc(100% - 40px) 100%;
+  }
 }
 @container not scroll-state(scrollable: block) {
   .scroll-fade::before,
@@ -618,4 +624,20 @@ gama-date-range-panel.pop-leave {
   font-size: 12px;
   line-height: 16px;
   color: var(--err);
+}
+:root[data-input="keyboard"]
+  :is(
+    .overlay,
+    .overlay > .dialog,
+    .modal-leave:not(.overlay),
+    .select-pop,
+    .range-pop,
+    gama-date-range-panel.pop-leave
+  ) {
+  animation: none;
+}
+:root[data-input="keyboard"] :is(.select-btn .chev, .cb, .switch),
+:root[data-input="keyboard"] .cb::after,
+:root[data-input="keyboard"] .switch::after {
+  transition: none;
 }

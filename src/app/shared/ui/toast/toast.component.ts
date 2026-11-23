@@ -12,6 +12,7 @@ import { ToastService } from "../../../core/feedback/toast.service";
           [class.toast-success]="toast.type === 'success'"
           [class.toast-error]="toast.type === 'error'"
           [class.toast-info]="toast.type === 'info'"
+          animate.leave="toast-leave"
         >
           {{ toast.message }}
         </div>
@@ -39,9 +40,18 @@ import { ToastService } from "../../../core/feedback/toast.service";
         background: var(--inverse);
         color: var(--on-inverse);
         box-shadow: var(--shadow-pop);
-        animation: rise 0.18s ease-out;
+        transition:
+          opacity 180ms var(--ease-out),
+          transform 180ms var(--ease-out);
         pointer-events: auto;
         font-size: 13px;
+      }
+
+      @starting-style {
+        .toast {
+          opacity: 0;
+          transform: translateY(6px);
+        }
       }
 
       .toast-error {
@@ -50,16 +60,19 @@ import { ToastService } from "../../../core/feedback/toast.service";
         font-weight: 500;
       }
 
-      @keyframes rise {
-        from {
-          opacity: 0;
-          transform: translateY(6px);
-        }
+      .toast.toast-leave {
+        opacity: 0;
+        transform: translateY(6px);
+        transition-duration: 150ms;
+        pointer-events: none;
       }
 
       @media (prefers-reduced-motion: reduce) {
         .toast {
-          animation: none;
+          transition-property: opacity;
+        }
+        .toast.toast-leave {
+          transform: none;
         }
       }
     `,

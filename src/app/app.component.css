@@ -144,3 +144,22 @@ main {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.update-card.card-in {
+  animation: card-in 200ms var(--ease-out);
+}
+@keyframes card-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+@keyframes card-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .update-card.card-in {
+    animation-name: card-fade-in;
+  }
+}

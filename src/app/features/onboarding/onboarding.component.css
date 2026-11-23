@@ -71,13 +71,16 @@
   height: 4px;
   border-radius: 2px;
   background: var(--surface-3);
+  overflow: hidden;
 }
 .bar span {
   display: block;
   height: 100%;
   border-radius: 2px;
   background: var(--primary);
-  transition: width 0.3s;
+  width: 100%;
+  transform-origin: left;
+  transition: transform 200ms var(--ease-out);
 }
 .pane {
   flex: 1 1 auto;
@@ -218,4 +221,36 @@
   padding-left: 20px;
   font-size: 14px;
   line-height: 22px;
+}
+.stepped .pane.step-in {
+  animation: step-in 200ms var(--ease-out);
+}
+.state .ic.state-in {
+  animation: state-in 160ms var(--ease-out);
+}
+:host-context([data-input="keyboard"]) .stepped .pane.step-in {
+  animation: none;
+}
+@keyframes step-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+@keyframes state-in {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+@keyframes onb-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .stepped .pane.step-in,
+  .state .ic.state-in {
+    animation-name: onb-fade-in;
+  }
 }

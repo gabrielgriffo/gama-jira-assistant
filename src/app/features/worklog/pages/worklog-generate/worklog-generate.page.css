@@ -70,17 +70,11 @@
   top: 0;
   margin-bottom: -48px;
   background: linear-gradient(to top, transparent, var(--surface));
-  animation: more-above linear both;
-  animation-timeline: scroll();
-  animation-range: 0 48px;
 }
 .days::after {
   bottom: -8px;
   margin-top: -48px;
   background: linear-gradient(to bottom, transparent, var(--surface));
-  animation: more-below linear both;
-  animation-timeline: scroll();
-  animation-range: calc(100% - 48px) 100%;
 }
 .to-top,
 .to-bottom {
@@ -100,23 +94,42 @@
   opacity: 0;
   visibility: hidden;
   transition: background-color 0.12s;
-  animation-timeline: scroll();
 }
 .to-top {
   top: 8px;
   margin-bottom: -36px;
-  animation-name: more-above;
-  animation-timing-function: linear;
-  animation-fill-mode: both;
-  animation-range: 0 48px;
 }
 .to-bottom {
   bottom: 0;
   margin-top: -36px;
-  animation-name: more-below;
-  animation-timing-function: linear;
-  animation-fill-mode: both;
-  animation-range: calc(100% - 48px) 100%;
+}
+@supports (animation-timeline: scroll()) {
+  .days::before {
+    animation: more-above linear both;
+    animation-timeline: scroll();
+    animation-range: 0 48px;
+  }
+  .days::after {
+    animation: more-below linear both;
+    animation-timeline: scroll();
+    animation-range: calc(100% - 48px) 100%;
+  }
+  .to-top,
+  .to-bottom {
+    animation-timeline: scroll();
+  }
+  .to-top {
+    animation-name: more-above;
+    animation-timing-function: linear;
+    animation-fill-mode: both;
+    animation-range: 0 48px;
+  }
+  .to-bottom {
+    animation-name: more-below;
+    animation-timing-function: linear;
+    animation-fill-mode: both;
+    animation-range: calc(100% - 48px) 100%;
+  }
 }
 :is(.to-top, .to-bottom):hover {
   background: var(--surface-3-hover);

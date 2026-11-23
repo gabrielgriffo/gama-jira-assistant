@@ -7,7 +7,7 @@
     (skipAll)="askSkip('all')"
   />
 
-  <section class="panel" aria-live="polite">
+  <section class="panel" [class.stepped]="stepped()" aria-live="polite">
     <div class="progress-head">
       <div
         class="bar"
@@ -17,13 +17,13 @@
         aria-valuemin="0"
         [attr.aria-valuemax]="stepCount"
       >
-        <span [style.width.%]="(completedCount() / stepCount) * 100"></span>
+        <span [style.transform]="'scaleX(' + completedCount() / stepCount + ')'"></span>
       </div>
       <span class="eyebrow">{{ completedCount() }} de {{ stepCount }} concluídas</span>
     </div>
     @switch (step()) {
       @case ("theme") {
-        <div class="pane">
+        <div class="pane" animate.enter="step-in">
           <div class="pane-head">
             <h2>Escolha o tema</h2>
             <p>Escolha como o Gama vai aparecer. Você pode mudar isso depois em Configurações › Geral.</p>
@@ -37,7 +37,7 @@
       }
 
       @case ("jira") {
-        <form class="pane" (ngSubmit)="connectJira()" autocomplete="off">
+        <form class="pane" animate.enter="step-in" (ngSubmit)="connectJira()" autocomplete="off">
           <div class="pane-head">
             <h2>Conecte sua conta do Jira</h2>
             <p>
@@ -115,7 +115,7 @@
       }
 
       @case ("pontomais") {
-        <form class="pane" (ngSubmit)="connectPontoMais()" autocomplete="off">
+        <form class="pane" animate.enter="step-in" (ngSubmit)="connectPontoMais()" autocomplete="off">
           <div class="pane-head">
             <h2>Conecte sua conta do PontoMais</h2>
             <p>
@@ -194,7 +194,7 @@
       }
 
       @case ("date") {
-        <form class="pane" (ngSubmit)="startImport()">
+        <form class="pane" animate.enter="step-in" (ngSubmit)="startImport()">
           <div class="pane-head">
             <h2>Escolha o período da primeira importação</h2>
             @if (anyAccount()) {
@@ -251,7 +251,7 @@
       }
 
       @case ("import") {
-        <div class="pane">
+        <div class="pane" animate.enter="step-in">
           <div class="pane-head">
             @switch (firstImport.phase()) {
               @case ("running") {
@@ -293,10 +293,10 @@
                         <span class="spin"></span>
                       }
                       @case ("done") {
-                        <app-icon name="check" class="ic" />
+                        <app-icon name="check" class="ic" animate.enter="state-in" />
                       }
                       @case ("failed") {
-                        <app-icon name="close" class="ic" />
+                        <app-icon name="close" class="ic" animate.enter="state-in" />
                       }
                       @default {
                         <span class="dot"></span>
