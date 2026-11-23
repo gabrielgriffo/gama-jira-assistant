@@ -27,6 +27,8 @@
   --inverse: #2b2724;
   --inverse-2: #3a3430;
   --on-inverse: #fefbf9;
+  --inverse-sheen: linear-gradient(rgb(255 255 255 / 8%), rgb(255 255 255 / 0%));
+  --inverse-edge: inset 0 1px 0 rgb(255 255 255 / 6%);
   --peach: #ffb59c;
   --logo-left: #2b2724;
   --logo-meet: #9e2f17;
@@ -98,6 +100,8 @@
     --inverse: #f9f6f4;
     --inverse-2: #e7e4e2;
     --on-inverse: #2b2724;
+    --inverse-sheen: linear-gradient(rgb(0 0 0 / 0%), rgb(0 0 0 / 10%));
+    --inverse-edge: inset 0 -1px 0 rgb(0 0 0 / 8%);
     --peach: #ffb59c;
     --logo-left: #ffffff;
     --logo-meet: #ffb59c;
@@ -155,6 +159,8 @@
   --inverse: #f9f6f4;
   --inverse-2: #e7e4e2;
   --on-inverse: #2b2724;
+  --inverse-sheen: linear-gradient(rgb(0 0 0 / 0%), rgb(0 0 0 / 10%));
+  --inverse-edge: inset 0 -1px 0 rgb(0 0 0 / 8%);
   --peach: #ffb59c;
   --logo-left: #ffffff;
   --logo-meet: #ffb59c;

@@ -17,11 +17,12 @@
   background: var(--surface-3-hover);
 }
 .btn.primary {
-  background: var(--primary);
+  background: var(--inverse-sheen), var(--primary);
+  box-shadow: var(--inverse-edge);
   color: var(--on-primary);
 }
 .btn.primary:hover:not(:disabled) {
-  background: var(--primary-2);
+  background: var(--inverse-sheen), var(--primary-2);
 }
 .btn.launch {
   background: var(--launch);

@@ -43,7 +43,8 @@
   color: var(--ink);
 }
 .settings-nav button[aria-current="page"] {
-  background: var(--inverse);
+  background: var(--inverse-sheen), var(--inverse);
+  box-shadow: var(--inverse-edge);
   color: var(--on-inverse);
 }
 .settings-main {
