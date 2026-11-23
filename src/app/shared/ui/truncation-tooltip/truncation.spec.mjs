@@ -1,6 +1,14 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { OPEN_DELAY_MS, canTruncate, isTruncated, openDelay, placeTooltip, tooltipText } from "./truncation.ts";
+import {
+  OPEN_DELAY_MS,
+  canTruncate,
+  iconLabel,
+  isTruncated,
+  openDelay,
+  placeTooltip,
+  tooltipText,
+} from "./truncation.ts";
 
 const metrics = (over = {}) => ({
   textOverflow: "clip",
@@ -64,4 +72,36 @@ test("não sai da janela pela direita nem pela esquerda", () => {
   const left = placeTooltip({ left: 2, top: 200, width: 90, height: 20 }, { width: 240, height: 28 }, viewport);
   assert.equal(left.left, 8);
   assert.equal(left.originX, 2);
+});
+
+test("botão só com ícone usa o aria-label como texto", () => {
+  assert.equal(iconLabel("", "Ver histórico de INVISTA-885"), "Ver histórico de INVISTA-885");
+  assert.equal(iconLabel("  \n ", "  Fechar  "), "Fechar");
+});
+
+test("botão com texto visível ou sem rótulo não ganha tooltip de rótulo", () => {
+  assert.equal(iconLabel("Sincronizar", "Sincronizar tarefas"), null);
+  assert.equal(iconLabel("", null), null);
+  assert.equal(iconLabel("", "   "), null);
+});
+
+test("tooltip de ícone fica centralizado sobre o botão", () => {
+  const place = placeTooltip(
+    { left: 500, top: 200, width: 28, height: 28 },
+    { width: 120, height: 28 },
+    viewport,
+    "center",
+  );
+  assert.deepEqual(place, { left: 454, top: 166, side: "top", originX: 60 });
+});
+
+test("tooltip de ícone perto da borda não sai da janela", () => {
+  const place = placeTooltip(
+    { left: 1070, top: 200, width: 28, height: 28 },
+    { width: 120, height: 28 },
+    viewport,
+    "center",
+  );
+  assert.equal(place.left, 972);
+  assert.equal(place.originX, 112);
 });

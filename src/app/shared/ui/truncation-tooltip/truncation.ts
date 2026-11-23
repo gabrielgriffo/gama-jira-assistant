@@ -21,10 +21,12 @@ export interface Placement {
   originX: number;
 }
 
+export type Align = "start" | "center";
+
 export const OPEN_DELAY_MS = 600;
 export const SKIP_DELAY_MS = 300;
-export const CONTROL_SELECTOR =
-  'button, a[href], input, select, textarea, [role="button"], [role="option"], [role="tab"], [role="switch"], [contenteditable="true"]';
+export const CONTROL_SELECTOR = 'button, a[href], [role="button"], [role="option"], [role="tab"], [role="switch"]';
+export const IGNORED_SELECTOR = 'input, select, textarea, [contenteditable="true"], app-titlebar .controls';
 
 const GAP = 6;
 const MARGIN = 8;
@@ -49,19 +51,27 @@ export function tooltipText(text: string): string {
   return text.replace(/\s+/g, " ").trim();
 }
 
+export function iconLabel(visibleText: string, ariaLabel: string | null): string | null {
+  if (tooltipText(visibleText)) return null;
+  return tooltipText(ariaLabel ?? "") || null;
+}
+
 export function placeTooltip(
   anchor: Box,
   tip: { width: number; height: number },
   viewport: { width: number; height: number },
+  align: Align = "start",
 ): Placement {
   const maxLeft = Math.max(MARGIN, viewport.width - MARGIN - tip.width);
-  const left = Math.round(Math.min(Math.max(anchor.left - PADDING_X, MARGIN), maxLeft));
+  const wanted = align === "center" ? anchor.left + anchor.width / 2 - tip.width / 2 : anchor.left - PADDING_X;
+  const left = Math.round(Math.min(Math.max(wanted, MARGIN), maxLeft));
+  const pointX = align === "center" ? anchor.left + anchor.width / 2 : anchor.left + PADDING_X;
   const above = anchor.top - GAP - tip.height;
   const fitsAbove = above >= MARGIN;
   const fitsBelow = anchor.top + anchor.height + GAP + tip.height <= viewport.height - MARGIN;
   const side = fitsAbove || !fitsBelow ? "top" : "bottom";
   const top = Math.round(side === "top" ? Math.max(above, MARGIN) : anchor.top + anchor.height + GAP);
-  const originX = Math.round(Math.min(Math.max(anchor.left + PADDING_X - left, 0), tip.width));
+  const originX = Math.round(Math.min(Math.max(pointX - left, 0), tip.width));
   return { left, top, side, originX };
 }
 
