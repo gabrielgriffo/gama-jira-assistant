@@ -44,6 +44,7 @@ export class DateRangePickerComponent {
 
   protected readonly positions: ConnectedPosition[] = [
     { originX: "start", originY: "bottom", overlayX: "start", overlayY: "top", offsetY: 8 },
+    { originX: "end", originY: "top", overlayX: "start", overlayY: "top", offsetX: 8, offsetY: -4 },
     { originX: "start", originY: "top", overlayX: "start", overlayY: "bottom", offsetY: -8 },
   ];
 

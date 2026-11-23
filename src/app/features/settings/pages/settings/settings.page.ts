@@ -24,8 +24,7 @@ import { relativeDateTime } from "../../../../shared/date/local-date";
 import { LocalDataService } from "../../../../core/sync/local-data.service";
 import { changeTracker } from "../../../../shared/async/change-tracker";
 import { IconComponent } from "../../../../shared/ui/icon/icon.component";
-import { ThemeService } from "../../../../core/preferences/theme.service";
-import type { Theme } from "../../../../core/preferences/theme";
+import { ThemePickerComponent } from "../../../../shared/ui/theme-picker/theme-picker.component";
 import { UpdateService } from "../../../../core/update/update.service";
 
 const STATUS_COLUMNS = 3;
@@ -61,7 +60,7 @@ const APP_AUTHOR = "Gabriel Griffo";
 
 @Component({
   selector: "app-settings",
-  imports: [IconComponent, FormsModule, A11yModule, SelectComponent],
+  imports: [IconComponent, FormsModule, A11yModule, SelectComponent, ThemePickerComponent],
   templateUrl: "./settings.page.html",
   styleUrl: "./settings.page.css",
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -70,7 +69,6 @@ const APP_AUTHOR = "Gabriel Griffo";
   },
 })
 export class SettingsPage implements OnInit {
-  private readonly themeService = inject(ThemeService);
   readonly section = input<SettingsSection>("general");
   private jiraStateService = inject(JiraStateService);
   private pontoMaisStateService = inject(PontoMaisStateService);
@@ -83,8 +81,6 @@ export class SettingsPage implements OnInit {
   readonly appDescription = APP_DESCRIPTION;
   readonly appAuthor = APP_AUTHOR;
   readonly tauriVersion = signal("");
-
-  readonly theme = signal<Theme>("light");
 
   readonly syncIntervalOptions = SYNC_INTERVAL_OPTIONS;
   readonly manualSyncOnly = MANUAL_SYNC_ONLY;
@@ -136,7 +132,6 @@ export class SettingsPage implements OnInit {
     getTauriVersion()
       .then((version) => this.tauriVersion.set(version))
       .catch((err) => error(`failed to read Tauri version: ${err}`));
-    this.loadTheme();
     this.applyStatuses(false);
   }
 
@@ -160,15 +155,6 @@ export class SettingsPage implements OnInit {
       error(`failed to open ${page} page: ${err}`);
       this.toastService.error("Não foi possível abrir o navegador.");
     });
-  }
-
-  loadTheme(): void {
-    this.theme.set(this.themeService.theme);
-  }
-
-  setTheme(theme: Theme): void {
-    this.theme.set(theme);
-    this.themeService.set(theme);
   }
 
   get hasOpenForm(): boolean {

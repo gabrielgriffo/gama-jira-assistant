@@ -1,48 +1,54 @@
-<app-titlebar />
-<div class="app">
-  <aside class="side" aria-label="Navegação">
-    <nav class="nav">
-      <div class="nav-label">Trabalho</div>
-      <button routerLink="/tasks" routerLinkActive="active" ariaCurrentWhenActive="page">
-        <app-icon name="list" class="ic" />
-        <span>Tarefas</span>
-      </button>
-      <button routerLink="/worklog" routerLinkActive="active" ariaCurrentWhenActive="page">
-        <app-icon name="clock" class="ic" />
-        <span>Gerar worklogs</span>
-      </button>
-      <button routerLink="/worklog-history" routerLinkActive="active" ariaCurrentWhenActive="page">
-        <app-icon name="calendar" class="ic" />
-        <span>Histórico de worklogs</span>
-      </button>
-    </nav>
-    @if (update.showBanner()) {
-      <div class="update-card" role="status">
-        <b>Atualização disponível</b>
-        <div class="update-actions">
-          <button type="button" class="btn quiet small" (click)="update.dismiss()">Adiar</button>
-          <button type="button" class="btn primary small" (click)="update.install()">Atualizar</button>
+<app-titlebar [showSettings]="onboarding.status() === 'off'" />
+@if (onboarding.status() === "off") {
+  <div class="app">
+    <aside class="side" aria-label="Navegação">
+      <nav class="nav">
+        <div class="nav-label">Trabalho</div>
+        <button routerLink="/tasks" routerLinkActive="active" ariaCurrentWhenActive="page">
+          <app-icon name="list" class="ic" />
+          <span>Tarefas</span>
+        </button>
+        <button routerLink="/worklog" routerLinkActive="active" ariaCurrentWhenActive="page">
+          <app-icon name="clock" class="ic" />
+          <span>Gerar worklogs</span>
+        </button>
+        <button routerLink="/worklog-history" routerLinkActive="active" ariaCurrentWhenActive="page">
+          <app-icon name="calendar" class="ic" />
+          <span>Histórico de worklogs</span>
+        </button>
+      </nav>
+      @if (update.showBanner()) {
+        <div class="update-card" role="status">
+          <b>Atualização disponível</b>
+          <div class="update-actions">
+            <button type="button" class="btn quiet small" (click)="update.dismiss()">Adiar</button>
+            <button type="button" class="btn primary small" (click)="update.install()">Atualizar</button>
+          </div>
         </div>
+      }
+      @if (update.status().phase === "installing") {
+        <div class="update-card" role="status">
+          <b><span class="spin"></span>Instalando atualização…</b>
+        </div>
+      }
+      <div class="side-foot">
+        <button type="button" class="who" (click)="settingsDialog.show('account')">
+          <b>{{ userName() }}</b>
+          <span>{{ jiraInstance() }}</span>
+        </button>
       </div>
-    }
-    @if (update.status().phase === "installing") {
-      <div class="update-card" role="status">
-        <b><span class="spin"></span>Instalando atualização…</b>
+    </aside>
+    <main id="main">
+      <div class="main-inner">
+        <router-outlet />
       </div>
-    }
-    <div class="side-foot">
-      <button type="button" class="who" (click)="settingsDialog.show('account')">
-        <b>{{ userName() }}</b>
-        <span>{{ jiraInstance() }}</span>
-      </button>
-    </div>
-  </aside>
-  <main id="main">
-    <div class="main-inner">
-      <router-outlet />
-    </div>
-  </main>
-</div>
+    </main>
+  </div>
+} @else if (onboarding.status() === "active") {
+  @defer (on immediate) {
+    <app-onboarding />
+  }
+}
 @if (settingsDialog.open()) {
   @defer (on immediate) {
     <app-settings-dialog animate.leave="modal-leave" (close)="settingsDialog.hide()" />

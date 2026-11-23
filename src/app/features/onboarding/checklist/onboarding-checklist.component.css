@@ -1,0 +1,123 @@
+:host {
+  display: contents;
+}
+.checklist {
+  flex: 0 0 260px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 24px 12px 24px 16px;
+  background: var(--surface-2);
+  border-radius: 12px 0 0 12px;
+}
+.intro {
+  padding: 0 8px;
+}
+.intro p {
+  margin-top: 4px;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--muted);
+}
+.skip-all {
+  align-self: flex-start;
+  margin-top: auto;
+}
+.item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 48px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+}
+.item:not(:disabled):hover {
+  background: var(--hover-soft);
+}
+.item.current {
+  background: var(--surface);
+  box-shadow: var(--shadow-thumb);
+}
+.mark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px var(--line);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.mark .ic {
+  width: 14px;
+  height: 14px;
+}
+.item.current .mark {
+  background: var(--primary);
+  box-shadow: none;
+  color: var(--on-primary);
+}
+.item.done .mark {
+  background: var(--ok-soft);
+  box-shadow: none;
+  color: var(--ok);
+}
+.item.skipped .mark {
+  box-shadow: inset 0 0 0 1.5px var(--warn);
+  color: var(--warn);
+}
+.dash {
+  width: 8px;
+  height: 2px;
+  border-radius: 1px;
+  background: currentColor;
+}
+.text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.text b {
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 600;
+}
+.text span {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--muted);
+}
+.item.pending .text b {
+  color: var(--muted);
+}
+.item.skipped .text span {
+  color: var(--warn);
+}
+.intro h1 {
+  font-size: 20px;
+  line-height: 28px;
+  font-family: var(--font-brand);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+.checklist ol {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.text span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}

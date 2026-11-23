@@ -11,14 +11,16 @@ use presentation::commands::jira::{
     get_jira_status_catalog_synced_at, get_jira_time_zone, get_status_history, list_my_tasks, login, logout,
     sync_jira_status_catalog, update_jira_statuses_is_development,
 };
-use presentation::commands::jira_worklog::{get_jira_worklogs_for_period, sync_jira_worklogs, sync_worklog_period};
+use presentation::commands::jira_worklog::{
+    get_jira_worklogs_for_period, sync_jira_worklogs, sync_period_issues, sync_worklog_period,
+};
 use presentation::commands::opener::{open_app_page, open_jira_url};
 use presentation::commands::pontomais::{
     get_pontomais_timeline, pontomais_connect, pontomais_disconnect, pontomais_status, sync_pontomais_entries,
 };
 use presentation::commands::preferences::{
-    clear_local_data, get_active_syncs, get_preferences, update_min_sync_interval, update_range_preference,
-    update_theme,
+    clear_local_data, get_active_syncs, get_preferences, save_onboarding, update_min_sync_interval,
+    update_range_preference, update_theme,
 };
 use presentation::commands::window::{
     focus_main_window, prepare_main_window, show_main_window, window_state_flags, MAIN_WINDOW,
@@ -81,6 +83,7 @@ pub fn run() {
             get_jira_worklogs_for_period,
             sync_jira_worklogs,
             sync_worklog_period,
+            sync_period_issues,
             pontomais_connect,
             pontomais_disconnect,
             pontomais_status,
@@ -90,6 +93,7 @@ pub fn run() {
             update_theme,
             update_range_preference,
             update_min_sync_interval,
+            save_onboarding,
             get_active_syncs,
             clear_local_data
         ])

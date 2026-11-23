@@ -77,6 +77,8 @@ export const syncCommands = {
 export const worklogsCommands = {
   syncWorklogPeriod: (fromDate: string, toDate: string, force = false) =>
     invoke<PeriodSyncSummary | null>("sync_worklog_period", { fromDate, toDate, force }),
+
+  syncPeriodIssues: (fromDate: string, toDate: string) => invoke<number>("sync_period_issues", { fromDate, toDate }),
 };
 
 export type TasksRangePreference = { preset: string } | { from: string; to: string };
@@ -90,6 +92,12 @@ export interface Preferences {
   tasksRange?: TasksRangePreference;
   worklogGenerateRange?: TasksRangePreference;
   worklogHistoryRange?: TasksRangePreference;
+  onboarding?: OnboardingProgress;
+}
+
+export interface OnboardingProgress {
+  completed: boolean;
+  themeSeen: boolean;
 }
 
 export const preferencesCommands = {
@@ -103,6 +111,8 @@ export const preferencesCommands = {
   updateTheme: (theme: Preferences["theme"]) => invoke<void>("update_theme", { theme }),
 
   clearLocalData: () => invoke<void>("clear_local_data"),
+
+  saveOnboarding: (progress: OnboardingProgress) => invoke<void>("save_onboarding", { progress }),
 };
 
 export const windowCommands = {

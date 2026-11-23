@@ -30,6 +30,16 @@ pub async fn sync_jira_worklogs(
 }
 
 #[tauri::command]
+pub async fn sync_period_issues(
+    from_date: String,
+    to_date: String,
+    service: State<'_, JiraWorklogSyncService>,
+) -> AppResult<usize> {
+    let range = DateRange::parse(&from_date, &to_date)?;
+    service.sync_period_issues(&range).await
+}
+
+#[tauri::command]
 pub async fn sync_worklog_period(
     from_date: String,
     to_date: String,

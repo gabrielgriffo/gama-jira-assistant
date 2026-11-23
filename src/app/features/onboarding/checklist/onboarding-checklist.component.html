@@ -1,0 +1,41 @@
+<aside class="checklist" aria-label="Etapas da configuração inicial">
+  <div class="intro">
+    <h1>Configuração inicial</h1>
+    <p>Conecte suas contas e traga os seus dados para o Gama.</p>
+  </div>
+  <ol>
+    @for (item of items(); track item.id; let i = $index) {
+      <li>
+        <button
+          type="button"
+          class="item"
+          [class]="item.state"
+          [disabled]="!item.enabled"
+          [attr.aria-current]="item.state === 'current' ? 'step' : null"
+          (click)="pick.emit(item.id)"
+        >
+          <span class="mark" aria-hidden="true">
+            @switch (item.state) {
+              @case ("done") {
+                <app-icon name="check" class="ic" />
+              }
+              @case ("skipped") {
+                <span class="dash"></span>
+              }
+              @default {
+                {{ i + 1 }}
+              }
+            }
+          </span>
+          <span class="text">
+            <b>{{ item.label }}</b>
+            <span>{{ item.state === "skipped" ? "Pulada" : item.detail }}</span>
+          </span>
+        </button>
+      </li>
+    }
+  </ol>
+  @if (canSkipAll()) {
+    <button type="button" class="btn quiet skip-all" (click)="skipAll.emit()" [disabled]="busy()">Pular tudo</button>
+  }
+</aside>

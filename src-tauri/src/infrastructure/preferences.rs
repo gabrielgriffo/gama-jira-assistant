@@ -23,10 +23,19 @@ pub struct Preferences {
     pub worklog_generate_range: Option<TasksRangePreference>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub worklog_history_range: Option<TasksRangePreference>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub onboarding: Option<OnboardingProgress>,
     #[serde(flatten)]
     pub extra: serde_json::Map<String, serde_json::Value>,
     #[serde(skip)]
     unparsed: serde_json::Map<String, serde_json::Value>,
+}
+
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase", default)]
+pub struct OnboardingProgress {
+    pub completed: bool,
+    pub theme_seen: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -73,6 +82,7 @@ impl Default for Preferences {
             tasks_range: None,
             worklog_generate_range: None,
             worklog_history_range: None,
+            onboarding: None,
             extra: serde_json::Map::new(),
             unparsed: serde_json::Map::new(),
         }
@@ -97,6 +107,7 @@ impl Preferences {
                 "tasksRange" => assign(&mut prefs.tasks_range, &value),
                 "worklogGenerateRange" => assign(&mut prefs.worklog_generate_range, &value),
                 "worklogHistoryRange" => assign(&mut prefs.worklog_history_range, &value),
+                "onboarding" => assign(&mut prefs.onboarding, &value),
                 _ => {
                     prefs.extra.insert(key, value);
                     continue;
@@ -206,6 +217,17 @@ impl PreferencesManager {
         self.update(|prefs| {
             prefs.unparsed.remove("minSyncIntervalMinutes");
             prefs.min_sync_interval_minutes = minutes;
+        })
+    }
+
+    pub fn save_onboarding(&self, progress: OnboardingProgress) -> Result<(), DomainError> {
+        self.update(|prefs| {
+            prefs.unparsed.remove("onboarding");
+            let current = prefs.onboarding.unwrap_or_default();
+            prefs.onboarding = Some(OnboardingProgress {
+                completed: current.completed || progress.completed,
+                theme_seen: current.theme_seen || progress.theme_seen,
+            });
         })
     }
 
@@ -387,6 +409,87 @@ mod tests {
 
         assert_eq!(manager.load().unwrap().min_sync_interval_minutes, 15);
         let _ = fs::remove_dir_all(dir.parent().unwrap());
+    }
+
+    #[test]
+    fn onboarding_progress_is_absent_until_saved_and_is_kept_with_other_preferences() {
+        let dir = std::env::temp_dir().join(format!("gama-prefs-onboarding-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(
+            dir.join("preferences.json"),
+            r#"{"version":1,"theme":"dark","tasksRange":{"preset":"7d"}}"#,
+        )
+        .unwrap();
+        let manager = PreferencesManager::new(dir.clone());
+
+        assert_eq!(manager.load().unwrap().onboarding, None);
+        manager.save_onboarding(OnboardingProgress::default()).unwrap();
+        assert_eq!(manager.load().unwrap().onboarding, Some(OnboardingProgress::default()));
+
+        manager
+            .save_onboarding(OnboardingProgress {
+                completed: false,
+                theme_seen: true,
+            })
+            .unwrap();
+        let loaded = manager.load().unwrap();
+        assert_eq!(
+            loaded.onboarding,
+            Some(OnboardingProgress {
+                completed: false,
+                theme_seen: true
+            })
+        );
+        assert_eq!(loaded.theme, Theme::Dark);
+        assert_eq!(
+            loaded.tasks_range,
+            Some(TasksRangePreference::Preset { preset: "7d".into() })
+        );
+        let saved: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(dir.join("preferences.json")).unwrap()).unwrap();
+        assert_eq!(
+            saved["onboarding"],
+            serde_json::json!({"completed": false, "themeSeen": true})
+        );
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn onboarding_progress_never_goes_back() {
+        let dir = std::env::temp_dir().join(format!("gama-prefs-onboarding-back-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        let manager = PreferencesManager::new(dir.clone());
+
+        manager
+            .save_onboarding(OnboardingProgress {
+                completed: true,
+                theme_seen: true,
+            })
+            .unwrap();
+        manager.save_onboarding(OnboardingProgress::default()).unwrap();
+
+        assert_eq!(
+            manager.load().unwrap().onboarding,
+            Some(OnboardingProgress {
+                completed: true,
+                theme_seen: true
+            })
+        );
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn invalid_onboarding_value_is_treated_as_absent() {
+        let prefs = Preferences::parse_lenient(r#"{"version":1,"onboarding":"sim"}"#);
+        assert_eq!(prefs.onboarding, None);
+        let partial = Preferences::parse_lenient(r#"{"version":1,"onboarding":{"themeSeen":true}}"#);
+        assert_eq!(
+            partial.onboarding,
+            Some(OnboardingProgress {
+                completed: false,
+                theme_seen: true
+            })
+        );
     }
 
     #[test]

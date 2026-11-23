@@ -1,0 +1,386 @@
+<div class="setup">
+  <app-onboarding-checklist
+    [items]="checklist()"
+    [canSkipAll]="!importStarted()"
+    [busy]="finishing()"
+    (pick)="goTo($event)"
+    (skipAll)="askSkip('all')"
+  />
+
+  <section class="panel" aria-live="polite">
+    <div class="progress-head">
+      <div
+        class="bar"
+        role="progressbar"
+        aria-label="Etapas concluídas"
+        [attr.aria-valuenow]="completedCount()"
+        aria-valuemin="0"
+        [attr.aria-valuemax]="stepCount"
+      >
+        <span [style.width.%]="(completedCount() / stepCount) * 100"></span>
+      </div>
+      <span class="eyebrow">{{ completedCount() }} de {{ stepCount }} concluídas</span>
+    </div>
+    @switch (step()) {
+      @case ("theme") {
+        <div class="pane">
+          <div class="pane-head">
+            <h2>Escolha o tema</h2>
+            <p>Escolha como o Gama vai aparecer. Você pode mudar isso depois em Configurações › Geral.</p>
+          </div>
+          <gama-theme-picker large />
+          <div class="pane-foot">
+            <span class="grow"></span>
+            <button type="button" class="btn primary" (click)="next()">Continuar</button>
+          </div>
+        </div>
+      }
+
+      @case ("jira") {
+        <form class="pane" (ngSubmit)="connectJira()" autocomplete="off">
+          <div class="pane-head">
+            <h2>Conecte sua conta do Jira</h2>
+            <p>
+              O Gama usa o Jira para listar as tarefas atribuídas a você, acompanhar o histórico de status e enviar os
+              worklogs. Informe a URL do Jira, o e-mail da conta Atlassian e um token de API.
+            </p>
+          </div>
+          @if (jiraConnected()) {
+            <div class="account">
+              <div class="connected" [title]="jiraAccount()">
+                <app-icon name="check" class="ic" />
+                <span>Conectado como {{ jiraAccount() }}</span>
+              </div>
+              <button type="button" class="btn stable" (click)="disconnectJira()" [disabled]="jiraLoading()">
+                <span [class.off]="jiraLoading()">Desconectar</span>
+                <span [class.off]="!jiraLoading()">Desconectando…</span>
+              </button>
+            </div>
+            @if (jiraError()) {
+              <p class="form-error" [title]="jiraError()">{{ jiraError() }}</p>
+            }
+            <div class="pane-foot">
+              <span class="grow"></span>
+              <button type="button" class="btn primary" (click)="next()" [disabled]="jiraLoading()">Continuar</button>
+            </div>
+          } @else {
+            <div class="fields">
+              <label class="field">
+                <span>URL do Jira</span>
+                <input
+                  type="url"
+                  name="jiraUrl"
+                  autocomplete="off"
+                  [(ngModel)]="jiraUrl"
+                  placeholder="https://empresa.atlassian.net"
+                  [disabled]="jiraLoading()"
+                />
+              </label>
+              <label class="field">
+                <span>E-mail</span>
+                <input
+                  type="email"
+                  name="jiraEmail"
+                  autocomplete="off"
+                  [(ngModel)]="jiraEmail"
+                  placeholder="seu.email@empresa.com"
+                  [disabled]="jiraLoading()"
+                />
+              </label>
+              <label class="field">
+                <span>Token de API</span>
+                <input
+                  type="password"
+                  name="jiraToken"
+                  autocomplete="off"
+                  [(ngModel)]="jiraToken"
+                  placeholder="••••••••••••••••"
+                  [disabled]="jiraLoading()"
+                />
+              </label>
+              <p class="form-error msg-slot" [title]="jiraError()">{{ jiraError() }}</p>
+            </div>
+            <div class="pane-foot">
+              <button type="button" class="btn quiet" (click)="askSkip('jira')" [disabled]="jiraLoading()">
+                Pular
+              </button>
+              <span class="grow"></span>
+              <button type="submit" class="btn primary stable" [disabled]="!canConnectJira()">
+                <span [class.off]="jiraLoading()">Conectar</span>
+                <span [class.off]="!jiraLoading()"><span class="spin"></span>Conectando…</span>
+              </button>
+            </div>
+          }
+        </form>
+      }
+
+      @case ("pontomais") {
+        <form class="pane" (ngSubmit)="connectPontoMais()" autocomplete="off">
+          <div class="pane-head">
+            <h2>Conecte sua conta do PontoMais</h2>
+            <p>
+              As marcações de ponto do PontoMais definem os horários trabalhados em cada dia. É a partir delas que o
+              Gama sugere os worklogs.
+            </p>
+          </div>
+          @if (pontoMaisConnected()) {
+            <div class="account">
+              <div class="connected" [title]="pontoMaisAccount()">
+                <app-icon name="check" class="ic" />
+                <span>Conectado como {{ pontoMaisAccount() }}</span>
+              </div>
+              <button type="button" class="btn stable" (click)="disconnectPontoMais()" [disabled]="pontoMaisLoading()">
+                <span [class.off]="pontoMaisLoading()">Desconectar</span>
+                <span [class.off]="!pontoMaisLoading()">Desconectando…</span>
+              </button>
+            </div>
+            @if (pontoMaisError()) {
+              <p class="form-error" [title]="pontoMaisError()">{{ pontoMaisError() }}</p>
+            }
+            <div class="pane-foot">
+              <span class="grow"></span>
+              <button type="button" class="btn primary" (click)="next()" [disabled]="pontoMaisLoading()">
+                Continuar
+              </button>
+            </div>
+          } @else {
+            <div class="fields">
+              <label class="field">
+                <span>E-mail</span>
+                <input
+                  type="email"
+                  name="pontoMaisLogin"
+                  autocomplete="off"
+                  [(ngModel)]="pontoMaisLogin"
+                  placeholder="seu.email@empresa.com"
+                  [disabled]="pontoMaisLoading()"
+                />
+              </label>
+              <label class="field">
+                <span>Senha</span>
+                <input
+                  type="password"
+                  name="pontoMaisPassword"
+                  autocomplete="off"
+                  [(ngModel)]="pontoMaisPassword"
+                  placeholder="••••••••"
+                  [disabled]="pontoMaisLoading()"
+                />
+              </label>
+              <label class="form-option">
+                <input
+                  class="cb"
+                  type="checkbox"
+                  name="pontoMaisAutoReconnect"
+                  [(ngModel)]="pontoMaisAutoReconnect"
+                  [disabled]="pontoMaisLoading()"
+                />
+                <span>Reconectar automaticamente quando a sessão expirar</span>
+              </label>
+              <p class="form-error msg-slot" [title]="pontoMaisError()">{{ pontoMaisError() }}</p>
+            </div>
+            <div class="pane-foot">
+              <button type="button" class="btn quiet" (click)="askSkip('pontomais')" [disabled]="pontoMaisLoading()">
+                Pular
+              </button>
+              <span class="grow"></span>
+              <button type="submit" class="btn primary stable" [disabled]="!canConnectPontoMais()">
+                <span [class.off]="pontoMaisLoading()">Conectar</span>
+                <span [class.off]="!pontoMaisLoading()"><span class="spin"></span>Conectando…</span>
+              </button>
+            </div>
+          }
+        </form>
+      }
+
+      @case ("date") {
+        <form class="pane" (ngSubmit)="startImport()">
+          <div class="pane-head">
+            <h2>Escolha o período da primeira importação</h2>
+            @if (anyAccount()) {
+              <p>
+                O Gama importa os dados do período escolhido. Depois disso, cada tela continua sincronizando o período
+                que você abrir.
+              </p>
+            } @else {
+              <p>Nenhuma conta foi conectada, então não há dados para importar agora.</p>
+            }
+          </div>
+          @if (anyAccount()) {
+            <div class="date-step">
+              <gama-date-range-picker
+                [value]="importRange()"
+                [timeZone]="timeZone()"
+                [currentDay]="today()"
+                [minMonth]="minMonth()"
+                (applied)="importRange.set($event)"
+              />
+              <div class="date-summary">
+                <b class="chosen">{{ brDate(importRange().from) }} a {{ brDate(importRange().to) }}</b>
+                @if (validRange()) {
+                  <p class="hint">{{ importDays() }} {{ importDays() === 1 ? "dia" : "dias" }}. Serão importados:</p>
+                  <ul class="what">
+                    @if (jiraConnected()) {
+                      <li>os status do Jira</li>
+                      <li>as tarefas que passaram por você, com o histórico de status</li>
+                      <li>os seus worklogs</li>
+                    }
+                    @if (pontoMaisConnected()) {
+                      <li>as marcações de ponto</li>
+                    }
+                  </ul>
+                } @else {
+                  <p class="form-error">Escolha um período entre {{ brDate(minStart()) }} e hoje.</p>
+                }
+              </div>
+            </div>
+            <div class="pane-foot">
+              <button type="button" class="btn quiet" (click)="askSkip('date')">Pular</button>
+              <span class="grow"></span>
+              <button type="submit" class="btn primary" [disabled]="!validRange()">Iniciar importação</button>
+            </div>
+          } @else {
+            <div class="pane-foot">
+              <span class="grow"></span>
+              <button type="button" class="btn primary" (click)="finish()" [disabled]="finishing()">
+                Começar a usar
+              </button>
+            </div>
+          }
+        </form>
+      }
+
+      @case ("import") {
+        <div class="pane">
+          <div class="pane-head">
+            @switch (firstImport.phase()) {
+              @case ("running") {
+                <h2>Importando os seus dados</h2>
+                <p>
+                  Isso pode levar alguns minutos, dependendo do período. Você pode continuar usando o app enquanto a
+                  importação termina.
+                </p>
+              }
+              @case ("finished") {
+                @if (firstImport.hasFailures()) {
+                  <h2>Importação concluída com erros</h2>
+                  <p>
+                    Algumas etapas falharam. Tente de novo ou continue assim mesmo: os dados que faltaram serão buscados
+                    quando você abrir cada tela.
+                  </p>
+                } @else {
+                  <h2>Tudo pronto</h2>
+                  <p>Os seus dados foram importados. Bom trabalho!</p>
+                }
+              }
+              @default {
+                <h2>Importação não realizada</h2>
+                <p>
+                  Tudo bem: cada tela vai buscar os dados do período que você abrir. Você pode conectar as contas depois
+                  em Configurações › Conta.
+                </p>
+              }
+            }
+          </div>
+          @if (firstImport.range(); as range) {
+            <p class="hint">Período: {{ brDate(range.from) }} a {{ brDate(range.to) }}</p>
+            <ul class="progress">
+              @for (s of firstImport.steps(); track s.id) {
+                <li [class]="s.status">
+                  <span class="state" aria-hidden="true">
+                    @switch (s.status) {
+                      @case ("running") {
+                        <span class="spin"></span>
+                      }
+                      @case ("done") {
+                        <app-icon name="check" class="ic" />
+                      }
+                      @case ("failed") {
+                        <app-icon name="close" class="ic" />
+                      }
+                      @default {
+                        <span class="dot"></span>
+                      }
+                    }
+                  </span>
+                  <span class="step-text">
+                    <span>{{ stepText(s) }}</span>
+                    @if (s.status === "failed") {
+                      <span class="form-error" [title]="s.error ?? ''">{{ s.error }}</span>
+                    }
+                  </span>
+                </li>
+              }
+            </ul>
+          }
+          <div class="pane-foot">
+            <span class="grow"></span>
+            @switch (firstImport.phase()) {
+              @case ("running") {
+                <button type="button" class="btn" (click)="continueInBackground()" [disabled]="finishing()">
+                  Continuar usando o app
+                </button>
+              }
+              @case ("finished") {
+                @if (firstImport.hasFailures()) {
+                  <button type="button" class="btn" (click)="finish()" [disabled]="finishing()">
+                    Continuar assim mesmo
+                  </button>
+                  <button type="button" class="btn primary" (click)="retryImport()">Tentar de novo</button>
+                } @else {
+                  <button type="button" class="btn primary" (click)="finish()" [disabled]="finishing()">
+                    Começar a usar
+                  </button>
+                }
+              }
+              @default {
+                <button type="button" class="btn primary" (click)="finish()" [disabled]="finishing()">
+                  Começar a usar
+                </button>
+              }
+            }
+          </div>
+        </div>
+      }
+    }
+  </section>
+</div>
+
+@if (skipImpact(); as impact) {
+  <div class="overlay" animate.leave="modal-leave" (click)="$event.target === $event.currentTarget && cancelSkip()">
+    <div
+      class="dialog sm"
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="skip-dlg-title"
+      aria-describedby="skip-dlg-desc"
+      cdkTrapFocus
+      [cdkTrapFocusAutoCapture]="true"
+    >
+      <div class="dialog-head">
+        <div>
+          <h2 id="skip-dlg-title">{{ impact.title }}</h2>
+        </div>
+        <button type="button" class="icon-btn lg" (click)="cancelSkip()" aria-label="Fechar">
+          <app-icon name="close" class="ic" />
+        </button>
+      </div>
+      <div class="dialog-body skip-body" id="skip-dlg-desc">
+        <p>{{ impact.intro }}</p>
+        @if (impact.features.length) {
+          <ul>
+            @for (feature of impact.features; track feature) {
+              <li>{{ feature }}</li>
+            }
+          </ul>
+        }
+      </div>
+      <div class="dialog-foot">
+        <button type="button" class="btn quiet" (click)="cancelSkip()" cdkFocusInitial>Voltar</button>
+        <button type="button" class="btn primary" (click)="confirmSkipStep()">
+          {{ confirmSkip() === "all" ? "Pular tudo" : "Pular mesmo assim" }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

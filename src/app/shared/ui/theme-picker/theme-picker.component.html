@@ -1,0 +1,41 @@
+<div class="seg themes" role="group" aria-label="Tema">
+  <button (click)="set('light')" [attr.aria-pressed]="theme() === 'light'">
+    <span class="thumb light">
+      <i class="t-side"></i>
+      <i class="t-pill"></i>
+      <i class="t-card"></i>
+      <i class="t-card2"></i>
+    </span>
+    Claro
+  </button>
+  <button (click)="set('dark')" [attr.aria-pressed]="theme() === 'dark'">
+    <span class="thumb dark">
+      <i class="t-side"></i>
+      <i class="t-pill"></i>
+      <i class="t-card"></i>
+      <i class="t-card2"></i>
+    </span>
+    Escuro
+  </button>
+  <button (click)="set('system')" [attr.aria-pressed]="theme() === 'system'">
+    <span class="thumb system">
+      <span class="half l">
+        <span class="inner light">
+          <i class="t-side"></i>
+          <i class="t-pill"></i>
+          <i class="t-card"></i>
+          <i class="t-card2"></i>
+        </span>
+      </span>
+      <span class="half r">
+        <span class="inner dark">
+          <i class="t-side"></i>
+          <i class="t-pill"></i>
+          <i class="t-card"></i>
+          <i class="t-card2"></i>
+        </span>
+      </span>
+    </span>
+    Sistema
+  </button>
+</div>

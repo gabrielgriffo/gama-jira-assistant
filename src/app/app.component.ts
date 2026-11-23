@@ -11,6 +11,8 @@ import { IconComponent } from "./shared/ui/icon/icon.component";
 import { ToastComponent } from "./shared/ui/toast/toast.component";
 import { ThemeService } from "./core/preferences/theme.service";
 import { UpdateService } from "./core/update/update.service";
+import { OnboardingComponent } from "./features/onboarding/onboarding.component";
+import { OnboardingService } from "./features/onboarding/onboarding.service";
 
 @Component({
   selector: "app-root",
@@ -22,6 +24,7 @@ import { UpdateService } from "./core/update/update.service";
     TitlebarComponent,
     SettingsDialogComponent,
     ToastComponent,
+    OnboardingComponent,
   ],
   templateUrl: "./app.component.html",
   styleUrl: "./app.component.css",
@@ -34,6 +37,7 @@ export class AppComponent implements OnInit {
   readonly settingsDialog = inject(SettingsDialogService);
   private readonly theme = inject(ThemeService);
   readonly update = inject(UpdateService);
+  readonly onboarding = inject(OnboardingService);
 
   readonly userName = computed(() => {
     const state = this.jiraStateService.state();
@@ -58,7 +62,8 @@ export class AppComponent implements OnInit {
     this.pontoMaisStateService.initialize();
     this.syncStateService.initialize();
 
-    this.jiraStateService.refresh();
-    this.pontoMaisStateService.refresh();
+    void Promise.all([this.jiraStateService.refresh(), this.pontoMaisStateService.refresh()]).then(() =>
+      this.onboarding.decide(this.jiraStateService.state().connected, this.pontoMaisStateService.state().connected),
+    );
   }
 }

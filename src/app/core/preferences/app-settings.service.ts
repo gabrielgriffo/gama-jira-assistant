@@ -1,7 +1,7 @@
 import { computed, effect, inject, Injectable, signal } from "@angular/core";
 import { error } from "@tauri-apps/plugin-log";
 import { JiraStateService } from "../auth/jira-state.service";
-import { connectionCommands, Preferences, preferencesCommands, RangeScreen } from "../tauri";
+import { connectionCommands, OnboardingProgress, Preferences, preferencesCommands, RangeScreen } from "../tauri";
 import { localTimeZone, todayIn } from "../../shared/date/local-date";
 import { LatestOnly } from "../../shared/async/latest-only";
 import { fromRangePreference, RangePreset, RangeSelection, toRangePreference } from "../../shared/date/range-presets";
@@ -60,6 +60,20 @@ export class AppSettingsService {
   async saveMinSyncInterval(minutes: number): Promise<void> {
     await preferencesCommands.updateMinSyncInterval(minutes);
     if (this.preferences) this.preferences.minSyncIntervalMinutes = minutes;
+  }
+
+  get onboarding(): OnboardingProgress | undefined {
+    return this.preferences?.onboarding;
+  }
+
+  async saveOnboarding(progress: OnboardingProgress): Promise<void> {
+    await preferencesCommands.saveOnboarding(progress);
+    if (!this.preferences) return;
+    const current = this.preferences.onboarding;
+    this.preferences.onboarding = {
+      completed: !!current?.completed || progress.completed,
+      themeSeen: !!current?.themeSeen || progress.themeSeen,
+    };
   }
 
   async load(): Promise<void> {

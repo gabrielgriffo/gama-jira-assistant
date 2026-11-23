@@ -3,7 +3,9 @@ use std::sync::Arc;
 use crate::application::error::AppResult;
 use crate::application::SyncThrottle;
 use crate::infrastructure::credentials::CredentialService;
-use crate::infrastructure::preferences::{Preferences, PreferencesManager, TasksRangePreference, Theme};
+use crate::infrastructure::preferences::{
+    OnboardingProgress, Preferences, PreferencesManager, TasksRangePreference, Theme,
+};
 use tauri::State;
 
 #[tauri::command]
@@ -23,6 +25,14 @@ pub async fn update_range_preference(
     preferences_manager: State<'_, PreferencesManager>,
 ) -> AppResult<()> {
     Ok(preferences_manager.update_range(&screen, range)?)
+}
+
+#[tauri::command]
+pub async fn save_onboarding(
+    progress: OnboardingProgress,
+    preferences_manager: State<'_, PreferencesManager>,
+) -> AppResult<()> {
+    Ok(preferences_manager.save_onboarding(progress)?)
 }
 
 #[tauri::command]

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, inject, signal } from "@angular/core";
+import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, inject, input, signal } from "@angular/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import type { UnlistenFn } from "@tauri-apps/api/event";
 import { SettingsDialogService } from "../../../features/settings/settings-dialog.service";
@@ -18,6 +18,7 @@ import { leftSlop, topOverlay } from "./overlay-dismiss";
   },
 })
 export class TitlebarComponent implements OnInit, OnDestroy {
+  readonly showSettings = input(true);
   readonly isMac = /Mac/i.test(navigator.userAgent);
   readonly maximized = signal(false);
   private window = getCurrentWindow();
