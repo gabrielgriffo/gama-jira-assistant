@@ -352,8 +352,7 @@ input:disabled {
   scrollbar-gutter: stable;
   background: var(--overlay);
   pointer-events: none;
-  padding: max(12px, (100vh - var(--modal-max-height)) / 2) 12px
-    calc(env(safe-area-inset-bottom, 0px) + max(12px, (100vh - var(--modal-max-height)) / 2));
+  padding: var(--modal-gap) 12px calc(env(safe-area-inset-bottom, 0px) + var(--modal-gap));
 }
 .overlay::before {
   content: "";

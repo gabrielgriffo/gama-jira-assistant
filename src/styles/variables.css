@@ -59,7 +59,8 @@
   --modal-width: clamp(480px, 40vw + 340px, 1000px);
   --modal-min-width: 480px;
   --modal-max-width: 1000px;
-  --modal-max-height: 90vh;
+  --modal-gap: max(12px, round(down, 5vh, 1px));
+  --modal-max-height: calc(100vh - 2 * var(--modal-gap));
   --modal-sm-width: 400px;
   --modal-wide-width: clamp(600px, 30vw + 560px, 1000px);
   --modal-wide-min-width: 600px;
