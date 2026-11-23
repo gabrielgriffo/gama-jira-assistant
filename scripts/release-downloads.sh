@@ -8,6 +8,8 @@ APP="${APP:-Gama}"
 BASE="https://github.com/$REPO/releases/download/$TAG"
 START='<!-- downloads:start -->'
 END='<!-- downloads:end -->'
+LOG_START='<!-- changelog:start -->'
+LOG_END='<!-- changelog:end -->'
 
 ASSETS="$(gh release view "$TAG" -R "$REPO" --json assets -q '.assets[].name')"
 
@@ -50,17 +52,34 @@ table() {
   echo "| x86-64 (64-bit) | $(link EXE "$EXE") $(link MSI "$MSI") | $(link DEB "$DEB") $(link RPM "$RPM") $(link AppImage "$APPIMAGE") |"
 }
 
-block="$(printf '%s\n\n%s\n\n%s' "$START" "$(table)" "$END")"
-body="$(gh release view "$TAG" -R "$REPO" --json body -q .body | tr -d '\r')"
+changelog() {
+  local previous range
+  previous="$(git describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*' "$TAG^" 2>/dev/null || true)"
+  range="$TAG"
+  if [ -n "$previous" ]; then
+    range="$previous..$TAG"
+  fi
+  echo "### Changelog"
+  echo
+  git log --no-merges --abbrev=7 --format='%h %H %s' "$range" | while read -r short full subject; do
+    printf -- '- %s ([`%s`](https://github.com/%s/commit/%s))\n' "$subject" "$short" "$REPO" "$full"
+  done
+}
 
-if grep -qF "$START" <<<"$body" && grep -qF "$END" <<<"$body"; then
-  new_body="$(BLOCK="$block" awk -v s="$START" -v e="$END" '
-    $0 == s { print ENVIRON["BLOCK"]; skip = 1; next }
+without_block() {
+  awk -v s="$1" -v e="$2" '
+    $0 == s { skip = 1; next }
     $0 == e { skip = 0; next }
     !skip { print }
-  ' <<<"$body")"
-elif [ -n "$body" ]; then
-  new_body="$(printf '%s\n\n%s' "$block" "$body")"
+  '
+}
+
+block="$(printf '%s\n\n%s\n\n%s\n\n%s\n\n%s\n\n%s' "$START" "$(table)" "$END" "$LOG_START" "$(changelog)" "$LOG_END")"
+body="$(gh release view "$TAG" -R "$REPO" --json body -q .body | tr -d '\r')"
+rest="$(without_block "$START" "$END" <<<"$body" | without_block "$LOG_START" "$LOG_END" | sed '/./,$!d')"
+
+if [ -n "$rest" ]; then
+  new_body="$(printf '%s\n\n%s' "$block" "$rest")"
 else
   new_body="$block"
 fi
