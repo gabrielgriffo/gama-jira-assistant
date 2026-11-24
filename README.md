@@ -35,42 +35,44 @@ O Gama cruza três fontes para descobrir em que você trabalhou em cada dia: os 
 
 ## Interface
 
+Os dados exibidos nas imagens são fictícios.
+
 <table>
 <tr><th>Tarefas</th><th>Gerar worklogs</th></tr>
 <tr><td>
 
-<picture>
-  <source media="(prefers-color-scheme: light)" srcset="docs/screenshots/tarefas-claro.png">
-  <img src="docs/screenshots/tarefas-escuro.png" width="420" alt="Tela de Tarefas com as issues atribuídas ao usuário no período, abas por categoria de status, busca e a coluna de status de cada issue">
-</picture>
+<img src="docs/screenshots/tarefas-claro.png" width="420" alt="Tela de Tarefas com as issues atribuídas ao usuário no período, abas por categoria de status, busca e a coluna de status de cada issue">
 
 </td><td>
 
-<picture>
-  <source media="(prefers-color-scheme: light)" srcset="docs/screenshots/gerar-worklogs-claro.png">
-  <img src="docs/screenshots/gerar-worklogs-escuro.png" width="420" alt="Tela Gerar worklogs com a linha do tempo de cada dia: marcações de ponto, tempo contabilizado por issue e o tempo já registrado no Jira">
-</picture>
+<img src="docs/screenshots/gerar-worklogs-claro.png" width="420" alt="Tela Gerar worklogs com a linha do tempo de cada dia: marcações de ponto, tempo contabilizado por issue e o tempo já registrado no Jira">
 
 </td></tr>
 <tr><th>Registro do dia</th><th>Histórico de worklogs</th></tr>
 <tr><td>
 
-<picture>
-  <source media="(prefers-color-scheme: light)" srcset="docs/screenshots/registrar-dia-claro.png">
-  <img src="docs/screenshots/registrar-dia-escuro.png" width="420" alt="Prévia do registro de um dia com os worklogs sugeridos, início, duração, comentário e o botão para enviar ao Jira">
-</picture>
+<img src="docs/screenshots/registrar-dia-claro.png" width="420" alt="Prévia do registro de um dia com os worklogs sugeridos, início, duração, comentário e o botão para enviar ao Jira">
 
 </td><td>
 
-<picture>
-  <source media="(prefers-color-scheme: light)" srcset="docs/screenshots/historico-claro.png">
-  <img src="docs/screenshots/historico-escuro.png" width="420" alt="Tela Histórico de worklogs com os indicadores de tempo registrado, ponto e diferença, e a grade de issues por dia">
-</picture>
+<img src="docs/screenshots/historico-claro.png" width="420" alt="Tela Histórico de worklogs com os indicadores de tempo registrado, ponto e diferença, e a grade de issues por dia">
+
+</td></tr>
+<tr><th colspan="2">Tema escuro</th></tr>
+<tr><td>
+
+<img src="docs/screenshots/gerar-worklogs-escuro.png" width="420" alt="Tela Gerar worklogs no tema escuro, com a linha do tempo de cada dia e o tempo contabilizado por issue">
+
+</td><td>
+
+<img src="docs/screenshots/historico-escuro.png" width="420" alt="Tela Histórico de worklogs no tema escuro, com os indicadores de tempo registrado, ponto e diferença">
 
 </td></tr>
 </table>
 
-Os dados exibidos nas imagens são fictícios.
+### Registro de worklog
+
+<img src="docs/screenshots/registrar-worklogs-claro.gif" width="100%" alt="Animação do registro de um dia em Gerar worklogs: a linha do tempo de sexta-feira mostra o tempo calculado por issue, a prévia abre com os worklogs sugeridos, um comentário é preenchido, o envio é confirmado e o dia passa a mostrar 8h26 registradas no Jira">
 
 ## Funcionalidades
 
@@ -88,15 +90,15 @@ Os dados exibidos nas imagens são fictícios.
 
 ## Configurações
 
-| Opção | Descrição |
-|---|---|
-| Tema | Claro, escuro ou o tema do sistema. |
+| Opção                                 | Descrição                                                                                                                           |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Tema                                  | Claro, escuro ou o tema do sistema.                                                                                                 |
 | Intervalo mínimo entre sincronizações | Tempo mínimo entre duas buscas no Jira ao abrir as telas: sempre, 1, 5, 15 ou 30 minutos, 1 hora, ou só pelo botão **Sincronizar**. |
-| Jira | URL do site, e-mail e token da API. Mostra a conta conectada e permite desconectar. |
-| PontoMais | E-mail e senha, com a opção de reconectar automaticamente quando a sessão expirar. |
-| Status de desenvolvimento | Status do Jira, agrupados por categoria, em que o tempo da issue é contado. |
-| Atualizações | Mostra a versão instalada e permite verificar manualmente se há uma versão nova. |
-| Apagar dados locais | Remove tarefas, histórico de status, worklogs e marcações de ponto guardados neste computador. As contas continuam conectadas. |
+| Jira                                  | URL do site, e-mail e token da API. Mostra a conta conectada e permite desconectar.                                                 |
+| PontoMais                             | E-mail e senha, com a opção de reconectar automaticamente quando a sessão expirar.                                                  |
+| Status de desenvolvimento             | Status do Jira, agrupados por categoria, em que o tempo da issue é contado.                                                         |
+| Atualizações                          | Mostra a versão instalada e permite verificar manualmente se há uma versão nova.                                                    |
+| Apagar dados locais                   | Remove tarefas, histórico de status, worklogs e marcações de ponto guardados neste computador. As contas continuam conectadas.      |
 
 ## Limitações conhecidas
 
@@ -115,10 +117,10 @@ Os dados exibidos nas imagens são fictícios.
 
 As marcações ativas do dia são agrupadas em pares de entrada e saída e convertidas para UTC no fuso do perfil do Jira. Em seguida, o changelog de cada issue candidata (atribuída a você hoje ou em algum momento) é reconstruído em dois conjuntos de intervalos: em que ela esteve em um status de desenvolvimento e em que ela esteve atribuída a você.
 
-| Etapa | Resultado |
-|---|---|
+| Etapa                                        | Resultado                                               |
+| -------------------------------------------- | ------------------------------------------------------- |
 | Status de desenvolvimento ∩ atribuída a você | Intervalos em que a issue era sua e estava em andamento |
-| Resultado ∩ ponto aberto | Tempo contado da issue no dia |
+| Resultado ∩ ponto aberto                     | Tempo contado da issue no dia                           |
 
 O início sugerido do worklog é o começo do primeiro trecho contado. Com número ímpar de marcações, o último intervalo vai até o momento atual quando o dia é hoje e é descartado nos dias passados. Sábados e domingos só aparecem quando têm marcação, issue trabalhada ou worklog.
 
@@ -145,12 +147,12 @@ As datas são tratadas no fuso do perfil do Jira, e os períodos são convertido
 <details>
 <summary><strong>Onde ficam os dados</strong></summary>
 
-| Dado | Windows | Linux |
-|---|---|---|
-| Banco local (`gama.db`) | `%APPDATA%\com.gabrielgriffo.gama\` | `~/.local/share/com.gabrielgriffo.gama/` |
-| Preferências (`preferences.json`) | `%APPDATA%\com.gabrielgriffo.gama\` | `~/.config/com.gabrielgriffo.gama/` |
-| Logs | `%LOCALAPPDATA%\com.gabrielgriffo.gama\logs\` | `~/.local/share/com.gabrielgriffo.gama/logs/` |
-| Token do Jira e senha do PontoMais | Gerenciador de Credenciais do Windows | Keyring do sistema (Secret Service) |
+| Dado                               | Windows                                       | Linux                                         |
+| ---------------------------------- | --------------------------------------------- | --------------------------------------------- |
+| Banco local (`gama.db`)            | `%APPDATA%\com.gabrielgriffo.gama\`           | `~/.local/share/com.gabrielgriffo.gama/`      |
+| Preferências (`preferences.json`)  | `%APPDATA%\com.gabrielgriffo.gama\`           | `~/.config/com.gabrielgriffo.gama/`           |
+| Logs                               | `%LOCALAPPDATA%\com.gabrielgriffo.gama\logs\` | `~/.local/share/com.gabrielgriffo.gama/logs/` |
+| Token do Jira e senha do PontoMais | Gerenciador de Credenciais do Windows         | Keyring do sistema (Secret Service)           |
 
 Os logs registram o método e a URL de cada requisição ao Jira e ao PontoMais, o que inclui o endereço do seu site Jira e as chaves das issues. Revise o conteúdo antes de publicá-lo.
 
