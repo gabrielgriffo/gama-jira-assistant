@@ -21,7 +21,7 @@
     "@angular/common": "^20.3.35",
     "@angular/compiler": "^20.3.35",
     "@angular/core": "^20.3.35",
-    "@angular/forms": "^20.3.35",
+    "@angular/forms": "^22.3.0",
     "@angular/platform-browser": "^20.3.35",
     "@angular/router": "^20.3.35",
     "@fontsource/dm-sans": "5.2.8",
