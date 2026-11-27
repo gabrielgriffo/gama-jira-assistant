@@ -37,7 +37,7 @@
   },
   "devDependencies": {
     "@angular/build": "^20.3.33",
-    "@angular/cli": "^20.3.33",
+    "@angular/cli": "^22.3.0",
     "@angular/compiler-cli": "^20.3.35",
     "@tauri-apps/cli": "^2.12.1",
     "prettier": "3.9.9",
